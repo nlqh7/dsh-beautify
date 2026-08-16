@@ -5,7 +5,7 @@
  * semantics remain legible in every skin.
  */
 import type { ThemeDefinition, ThemeTokens } from '@deepseek-ai/dsh-client-ui-theme/client'
-import { WALLPAPERS } from './wallpapers.ts'
+import { WALLPAPERS, type Wallpaper } from './wallpapers.ts'
 
 /** Dream Skin palette: the ten colors the source themes declare. */
 interface DreamSkinPalette {
@@ -35,7 +35,7 @@ function hexToRgba(color: string, alpha: number): string {
 function toTokens(id: string, p: DreamSkinPalette): ThemeTokens {
   const wallpaper = WALLPAPERS[id]
   const base = wallpaper !== undefined
-    ? `linear-gradient(90deg, ${hexToRgba(p.background, 0.88)} 0%, ${hexToRgba(p.background, 0.62)} 45%, ${hexToRgba(p.background, 0.12)} 72%, transparent 90%), url("${wallpaper.url}") ${Math.round(wallpaper.focusX * 100)}% ${Math.round(wallpaper.focusY * 100)}% / cover no-repeat`
+    ? `linear-gradient(90deg, ${hexToRgba(p.background, 0.72)} 0%, ${hexToRgba(p.background, 0.42)} 38%, ${hexToRgba(p.background, 0.06)} 66%, transparent 84%), url("${wallpaper.url}") ${Math.round(wallpaper.focusX * 100)}% ${Math.round(wallpaper.focusY * 100)}% / cover no-repeat`
     : p.background
   return {
     '--dsw-alias-bg-base': base,
@@ -61,6 +61,8 @@ export interface DreamSkinPreset {
   definition: ThemeDefinition
   /** Preview swatches: background, accent, text. */
   swatches: readonly string[]
+  /** Wallpaper metadata when this preset ships a background image. */
+  wallpaper?: Wallpaper
 }
 
 function preset(id: string, label: string, colorScheme: 'light' | 'dark', palette: DreamSkinPalette): DreamSkinPreset {
@@ -73,6 +75,7 @@ function preset(id: string, label: string, colorScheme: 'light' | 'dark', palett
       tokens: Object.freeze(toTokens(id, palette)),
     }),
     swatches: Object.freeze([palette.background, palette.accent, palette.text]),
+    ...(WALLPAPERS[id] === undefined ? {} : { wallpaper: WALLPAPERS[id] }),
   }
 }
 

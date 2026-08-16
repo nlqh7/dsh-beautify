@@ -5,6 +5,7 @@
  * semantics remain legible in every skin.
  */
 import type { ThemeDefinition } from '@deepseek-ai/dsh-client-ui-theme/client';
+import { type Wallpaper } from './wallpapers.ts';
 /** One selectable Dream Skin preset. */
 export interface DreamSkinPreset {
     /** theme id (the setTheme argument). */
@@ -15,6 +16,8 @@ export interface DreamSkinPreset {
     definition: ThemeDefinition;
     /** Preview swatches: background, accent, text. */
     swatches: readonly string[];
+    /** Wallpaper metadata when this preset ships a background image. */
+    wallpaper?: Wallpaper;
 }
 /** Shipped presets, in display order. */
 export declare const DREAM_SKIN_PRESETS: readonly DreamSkinPreset[];

@@ -1,14 +1,14 @@
 /**
  * Dream Skin client plugin: register the shipped color skins on the native
- * theme service and mount a settings section that switches them. The theme
- * definitions are static and immutable; the service owns the live preference,
- * so the plugin only mirrors its snapshot into the settings store.
+ * theme service, persist the selection to the Host settings scope, and mount
+ * a settings section that switches them.
  */
 import type { ClientContext } from '@deepseek-ai/dsh-client-runtime/client';
-/** Required services: the theme registry this package skins and the slot system. */
+/** Required services: theme registry, slot system, and the durable settings scope. */
 export declare const inject: string[];
 /**
- * Register every Dream Skin preset and mount the switching section.
+ * Register every Dream Skin preset, restore the persisted selection, and
+ * mount the switching section.
  * @param ctx - the browser plugin context.
  */
 export declare function apply(ctx: ClientContext): void;

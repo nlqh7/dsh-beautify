@@ -1,9 +1,3 @@
-/**
- * Dream Skin settings section: the shipped presets as cards with preview
- * swatches, plus a "follow system" reset. Selection reads the persisted
- * preference (never the resolved active theme) and writes through the injected
- * select callback.
- */
 import type { InjectFace, PropsRuntime, PropsStore } from '@deepseek-ai/dsh-client-ui-slots';
 import type { createDreamSkinStore } from './settings-store.ts';
 import type { DreamSkinPreset } from './themes.ts';

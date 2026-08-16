@@ -1,9 +1,10 @@
 /**
  * Dream Skin settings section: the shipped presets as cards with preview
- * swatches, plus a "follow system" reset. Selection reads the persisted
- * preference (never the resolved active theme) and writes through the injected
- * select callback.
+ * swatches, a "follow system" reset, and a hover wallpaper preview. Selection
+ * reads the persisted preference (never the resolved active theme) and writes
+ * through the injected select callback.
  */
+import { useState } from 'react'
 import type { InjectFace, PropsRuntime, PropsStore } from '@deepseek-ai/dsh-client-ui-slots'
 import type { createDreamSkinStore } from './settings-store.ts'
 import type { DreamSkinPreset } from './themes.ts'
@@ -33,10 +34,14 @@ const DEFAULT_IDS = new Set(['system', 'light', 'dark'])
  */
 export function DreamSkinSettings({ useStore, presets, select }: DreamSkinSettingsProps) {
   const preference = useStore(s => s.preference)
+  const [hovered, setHovered] = useState<string | null>(null)
   const isDefault = DEFAULT_IDS.has(preference)
+  const hoveredPreset = hovered === null
+    ? undefined
+    : presets.find(p => p.id === hovered && p.wallpaper !== undefined)
   return (
     <div className={css.root}>
-      <div className={css.hint}>选择一套 Dream Skin 主题，点击即应用。</div>
+      <div className={css.hint}>选择一套 Dream Skin 主题，悬停预览壁纸，点击即应用。</div>
       <button
         type="button"
         className={isDefault ? `${css.card} ${css.selected}` : css.card}
@@ -60,6 +65,8 @@ export function DreamSkinSettings({ useStore, presets, select }: DreamSkinSettin
             className={selected ? `${css.card} ${css.selected}` : css.card}
             aria-pressed={selected}
             onClick={() => { select(p.id) }}
+            onMouseEnter={() => { setHovered(p.id) }}
+            onMouseLeave={() => { setHovered(null) }}
           >
             <span className={css.swatchRow}>
               {p.swatches.map((color) => (
@@ -70,6 +77,11 @@ export function DreamSkinSettings({ useStore, presets, select }: DreamSkinSettin
           </button>
         )
       })}
+      {hoveredPreset?.wallpaper !== undefined && (
+        <div className={css.preview}>
+          <img src={hoveredPreset.wallpaper.url} alt="" draggable={false} />
+        </div>
+      )}
     </div>
   )
 }

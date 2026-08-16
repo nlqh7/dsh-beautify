@@ -1,8 +1,7 @@
 /**
  * Dream Skin client plugin: register the shipped color skins on the native
- * theme service and mount a settings section that switches them. The theme
- * definitions are static and immutable; the service owns the live preference,
- * so the plugin only mirrors its snapshot into the settings store.
+ * theme service, persist the selection to the Host settings scope, and mount
+ * a settings section that switches them.
  */
 import type { ClientContext } from '@deepseek-ai/dsh-client-runtime/client'
 // Type-only: pulls the theme service Context merge (ctx.theme) and its events.
@@ -15,12 +14,15 @@ import { DREAM_SKIN_PRESETS } from './themes.ts'
 import { createDreamSkinStore } from './settings-store.ts'
 import { DreamSkinSettings } from './DreamSkinSettings.tsx'
 import type { DreamSkinInjected } from './DreamSkinSettings.tsx'
+import { DREAM_SKIN_NAMESPACE, DREAM_SKIN_THEME_FIELD } from '../dream-settings.ts'
+import type { DreamSkinSettings as DreamSkinSettingsPrefs } from '../dream-settings.ts'
 
-/** Required services: the theme registry this package skins and the slot system. */
-export const inject = ['theme', 'slots']
+/** Required services: theme registry, slot system, and the durable settings scope. */
+export const inject = ['theme', 'slots', 'settingsScope']
 
 /**
- * Register every Dream Skin preset and mount the switching section.
+ * Register every Dream Skin preset, restore the persisted selection, and
+ * mount the switching section.
  * @param ctx - the browser plugin context.
  */
 export function apply(ctx: ClientContext): void {
@@ -28,6 +30,14 @@ export function apply(ctx: ClientContext): void {
     const disposers = DREAM_SKIN_PRESETS.map((preset) => ctx.theme.register(preset.definition))
     return () => { for (const dispose of disposers) dispose() }
   })
+
+  const host = ctx.settingsScope.bind<DreamSkinSettingsPrefs>({ namespace: DREAM_SKIN_NAMESPACE })
+
+  // Restore the persisted selection once the presets above are registered.
+  const saved = host.getSnapshot().value?.themeId
+  if (saved !== undefined && saved !== 'system' && DREAM_SKIN_PRESETS.some((preset) => preset.id === saved)) {
+    ctx.theme.setTheme(saved)
+  }
 
   const store = createDreamSkinStore()
   let bound: BoundActions<typeof store> | undefined
@@ -43,7 +53,10 @@ export function apply(ctx: ClientContext): void {
     sync(ctx.theme.getTheme())
     return {
       presets: DREAM_SKIN_PRESETS,
-      select: (id: string) => { ctx.theme.setTheme(id) },
+      select: (id: string) => {
+        ctx.theme.setTheme(id)
+        void host.set(DREAM_SKIN_THEME_FIELD, id)
+      },
     }
   }
 
