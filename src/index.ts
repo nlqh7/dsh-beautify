@@ -17,5 +17,8 @@ export const inject = ['webServer']
  * @param ctx - Host context carrying the webserver.
  */
 export function apply(ctx: Context): void {
+  const webServer = (ctx as { webServer?: { register?: unknown } }).webServer
+  console.log('[dsh-beautify] host apply, webServer.register:', typeof webServer?.register)
   registerWallpaperEngine(ctx)
+  console.log('[dsh-beautify] WE bridge mounted')
 }

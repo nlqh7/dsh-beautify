@@ -264,6 +264,7 @@ function mimeFor(absPath) {
  * correct; it is simply not added to headless/TUI profiles.
  */
 export function registerWallpaperEngine(ctx) {
+  console.log('[dsh-beautify] registerWallpaperEngine, webServer ok:', !!(ctx && ctx.webServer && typeof ctx.webServer.register === 'function'));
   const webServer = ctx.webServer;
   if (!webServer || typeof webServer.register !== 'function') {
     return () => {}; // defensive: never expected in practice
