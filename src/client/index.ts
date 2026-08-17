@@ -14,6 +14,7 @@ import type { ThemeSnapshot } from '@deepseek-ai/dsh-client-ui-theme/client'
 import { DREAM_SKIN_PRESETS, buildScrim, buildThemeDefinition } from './themes.ts'
 import type { DreamSkinPalette } from './themes.ts'
 import type { Wallpaper } from './wallpapers.ts'
+import { initWallpaperLayer } from './wallpaper-layer.ts'
 import { createDreamSkinStore } from './settings-store.ts'
 import { DreamSkinSettings } from './DreamSkinSettings.tsx'
 import type { CustomThemeInput, DreamSkinInjected } from './DreamSkinSettings.tsx'
@@ -64,6 +65,7 @@ function writePrefs(prefs: StoredPrefs): void {
  * @param ctx - the browser plugin context.
  */
 export function apply(ctx: ClientContext): void {
+  initWallpaperLayer(ctx)
   ctx.effect(() => {
     const disposers = DREAM_SKIN_PRESETS.map((preset) => ctx.theme.register(preset.definition))
     return () => { for (const dispose of disposers) dispose() }
