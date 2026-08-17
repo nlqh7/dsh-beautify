@@ -5,7 +5,7 @@
  */
 import type { Context } from '@deepseek-ai/cordis'
 
-export const name = 'dsh-dream-skin'
+export const name = 'dsh-beautify'
 
 /** Host half is a no-op: appearance state persists via browser localStorage. */
 export function apply(_ctx: Context): void {}

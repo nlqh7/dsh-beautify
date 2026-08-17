@@ -1,10 +1,10 @@
 /**
- * Package-owned invariant companion for `@deepseek-ai/dsh-dream-skin`.
- * @module @deepseek-ai/dsh-dream-skin/invariant
+ * Package-owned invariant companion for `@deepseek-ai/dsh-beautify`.
+ * @module @deepseek-ai/dsh-beautify/invariant
  */
 import type { Context } from '@deepseek-ai/cordis';
 /** Cordis companion plugin name. */
-export declare const name = "dsh-dream-skin-invariant";
+export declare const name = "dsh-beautify-invariant";
 /** Service required before the companion can reserve package ownership. */
 export declare const inject: string[];
 /**

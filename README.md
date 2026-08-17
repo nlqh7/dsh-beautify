@@ -1,6 +1,6 @@
 <img width="2559" height="1341" alt="image" src="https://github.com/user-attachments/assets/08dcdaec-67e3-4f8a-a2e5-cc93e85b431e" />
 
-# dsh-dream-skin
+# dsh-beautify
 
 给 DeepSeek Harness 换肤的插件：把 [Codex-Dream-Skin](https://github.com/Fei-Away/Codex-Dream-Skin) 的**主题配色 + 壁纸背景**带进 DSH 的**原生主题系统**（`theme` service），不是 CSS 注入 hack。设置页一键切换，配色 + 壁纸即时生效。
 
@@ -19,7 +19,7 @@
 ### 方式一：dsh plugin add
 
 ```sh
-dsh plugin add "github:nlqh7/dsh-dream-skin"
+dsh plugin add "github:nlqh7/dsh-beautify"
 ```
 
 ### 方式二：手动挂载
@@ -28,8 +28,8 @@ dsh plugin add "github:nlqh7/dsh-dream-skin"
 
 ```yaml
 - insert:
-    - id: dsh-dream-skin
-      name: '@deepseek-ai/dsh-dream-skin'
+    - id: dsh-beautify
+      name: '@deepseek-ai/dsh-beautify'
 ```
 
 并确保包能从 profile 目录解析（`dsh plugin add` 会自动处理）。

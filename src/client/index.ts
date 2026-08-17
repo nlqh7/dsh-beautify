@@ -26,7 +26,7 @@ export const inject = ['theme', 'slots']
 const HiddenAppearanceRow = (): null => null
 
 /** localStorage key for the persisted appearance prefs. */
-const STORAGE_KEY = 'dsh-dream-skin:prefs'
+const STORAGE_KEY = 'dsh-beautify:prefs'
 
 /** Persisted appearance state (browser-local, refresh-safe). */
 interface StoredPrefs {

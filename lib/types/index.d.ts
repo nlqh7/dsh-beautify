@@ -4,7 +4,7 @@
  * package stays mountable in headless profiles without a browser.
  */
 import type { Context } from '@deepseek-ai/cordis';
-export declare const name = "dsh-dream-skin";
+export declare const name = "dsh-beautify";
 /** Host half is a no-op: appearance state persists via browser localStorage. */
 export declare function apply(_ctx: Context): void;
 //# sourceMappingURL=index.d.ts.map
