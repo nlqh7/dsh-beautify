@@ -102,6 +102,10 @@ export function apply(ctx: ClientContext): void {
   restoreTheme()
   applyScrim()
   ctx.effect(() => host.subscribe(() => { applyCustomTheme(); restoreTheme(); applyScrim() }))
+  ctx.effect(() => host.subscribe(() => {
+    const snap = host.getSnapshot()
+    console.log(`[dsh-dream-skin] scope change: status=${snap.status} writable=${snap.writable} mode=${snap.mode}`)
+  }))
 
   // Theme switch: mirror the preference and re-apply the scrim to the new theme.
   ctx.on('theme/change', (snapshot: ThemeSnapshot) => {
@@ -119,6 +123,8 @@ export function apply(ctx: ClientContext): void {
     return {
       presets: DREAM_SKIN_PRESETS,
       select: (id: string) => {
+        const snap = host.getSnapshot()
+        console.log(`[dsh-dream-skin] select ${id}: status=${snap.status} writable=${snap.writable}`)
         ctx.theme.setTheme(id)
         void host.set(DREAM_SKIN_THEME_FIELD, id)
       },
