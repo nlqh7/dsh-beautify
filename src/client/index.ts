@@ -10,7 +10,9 @@ import type {} from '@deepseek-ai/dsh-client-ui-theme/client'
 import type {} from '@deepseek-ai/dsh-client-ui-settings/client'
 import type { BoundActions } from '@deepseek-ai/dsh-client-ui-slots'
 import type { ThemeSnapshot } from '@deepseek-ai/dsh-client-ui-theme/client'
-import { DREAM_SKIN_PRESETS, buildScrim } from './themes.ts'
+import { DREAM_SKIN_PRESETS, buildScrim, buildThemeDefinition } from './themes.ts'
+import type { DreamSkinPalette } from './themes.ts'
+import type { Wallpaper } from './wallpapers.ts'
 import { createDreamSkinStore } from './settings-store.ts'
 import { DreamSkinSettings } from './DreamSkinSettings.tsx'
 import type { DreamSkinInjected } from './DreamSkinSettings.tsx'
@@ -69,9 +71,33 @@ export function apply(ctx: ClientContext): void {
     const registered = ctx.theme.getTheme().themes.some((theme) => theme.id === saved)
     if (registered && ctx.theme.getTheme().preference !== saved) ctx.theme.setTheme(saved)
   }
+  // Register (or refresh) the user's custom theme from persisted settings.
+  let customDispose: (() => void) | undefined
+  const applyCustomTheme = (): void => {
+    customDispose?.()
+    customDispose = undefined
+    const custom = host.getSnapshot().value?.customTheme
+    if (custom === undefined || custom.wallpaperUrl === '') return
+    const palette: DreamSkinPalette = {
+      background: custom.background,
+      panel: custom.background,
+      panelAlt: custom.background,
+      accent: custom.accent,
+      accentAlt: custom.accent,
+      secondary: custom.accent,
+      highlight: custom.accent,
+      text: custom.text,
+      muted: custom.text,
+      line: custom.accent,
+    }
+    const wallpaper: Wallpaper = { url: custom.wallpaperUrl, focusX: 0.5, focusY: 0.5 }
+    customDispose = ctx.theme.register(buildThemeDefinition('custom', 'dark', palette, wallpaper))
+  }
+
+  applyCustomTheme()
   restoreTheme()
   applyScrim()
-  ctx.effect(() => host.subscribe(() => { restoreTheme(); applyScrim() }))
+  ctx.effect(() => host.subscribe(() => { applyCustomTheme(); restoreTheme(); applyScrim() }))
 
   // Theme switch: mirror the preference and re-apply the scrim to the new theme.
   ctx.on('theme/change', (snapshot: ThemeSnapshot) => {
@@ -94,6 +120,10 @@ export function apply(ctx: ClientContext): void {
       },
       setScrimStrength: (value: number) => {
         void host.set('scrimStrength', value)
+      },
+      saveCustomTheme: (custom: { wallpaperUrl: string; accent: string; background: string; text: string }) => {
+        void host.set('customTheme', custom)
+        void host.set(DREAM_SKIN_THEME_FIELD, 'custom')
       },
     }
   }

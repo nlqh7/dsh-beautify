@@ -42,9 +42,8 @@ export function buildScrim(p: DreamSkinPalette, wallpaper: Wallpaper, strength: 
   return `linear-gradient(90deg, ${hexToRgba(p.background, 0.72 * s)} 0%, ${hexToRgba(p.background, 0.42 * s)} 38%, ${hexToRgba(p.background, 0.06 * s)} 66%, transparent 84%), url("${wallpaper.url}") ${Math.round(wallpaper.focusX * 100)}% ${Math.round(wallpaper.focusY * 100)}% / cover no-repeat`
 }
 
-/** Map a Dream Skin palette onto the DSW alias tokens, folding in the wallpaper. */
-function toTokens(id: string, p: DreamSkinPalette): ThemeTokens {
-  const wallpaper = WALLPAPERS[id]
+/** Build the alias tokens for a palette, folding in the wallpaper when given. */
+function tokensFor(p: DreamSkinPalette, wallpaper: Wallpaper | undefined): ThemeTokens {
   const base = wallpaper !== undefined ? buildScrim(p, wallpaper, DEFAULT_SCRIM_STRENGTH) : p.background
   return {
     '--dsw-alias-bg-base': base,
@@ -58,6 +57,21 @@ function toTokens(id: string, p: DreamSkinPalette): ThemeTokens {
     '--dsw-alias-label-secondary': p.muted,
     '--dsw-specific-sidebar-fill': p.panel,
   }
+}
+
+/** Build a full theme definition from a palette and an optional wallpaper (custom themes). */
+export function buildThemeDefinition(
+  id: string,
+  colorScheme: 'light' | 'dark',
+  p: DreamSkinPalette,
+  wallpaper?: Wallpaper,
+): ThemeDefinition {
+  return Object.freeze({ id, colorScheme, tokens: Object.freeze(tokensFor(p, wallpaper)) })
+}
+
+/** Map a shipped preset onto its alias tokens. */
+function toTokens(id: string, p: DreamSkinPalette): ThemeTokens {
+  return tokensFor(p, WALLPAPERS[id])
 }
 
 /** One selectable Dream Skin preset. */

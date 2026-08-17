@@ -17,10 +17,27 @@ export interface DreamSkinSettings {
   themeId: string
   /** Wallpaper scrim (readability overlay) strength, 0..1. */
   scrimStrength: number
+  /** Custom theme config; present once the user creates their own theme. */
+  customTheme?: {
+    /** Wallpaper image URL (data URI or http(s)). */
+    wallpaperUrl: string
+    /** Accent color (brand). */
+    accent: string
+    /** Background color. */
+    background: string
+    /** Text color. */
+    text: string
+  }
 }
 
 /** Durable theme schema; also the wire envelope the browser scope validates against. */
 export const DreamSkinSettingsSchema: z<DreamSkinSettings> = z.object({
   [DREAM_SKIN_THEME_FIELD]: z.string().default('system'),
   scrimStrength: z.number().default(DEFAULT_SCRIM_STRENGTH),
+  customTheme: z.object({
+    wallpaperUrl: z.string(),
+    accent: z.string(),
+    background: z.string(),
+    text: z.string(),
+  }),
 })

@@ -1,7 +1,18 @@
 import type { InjectFace, PropsRuntime, PropsStore } from '@deepseek-ai/dsh-client-ui-slots';
 import type { createDreamSkinStore } from './settings-store.ts';
 import type { DreamSkinPreset } from './themes.ts';
-/** Registration-side business face: the roster, theme write, and scrim write. */
+/** Custom-theme form shape persisted to the settings document. */
+export interface CustomThemeInput {
+    /** Wallpaper image URL (data URI or http(s)). */
+    wallpaperUrl: string;
+    /** Accent (brand) color. */
+    accent: string;
+    /** Background color. */
+    background: string;
+    /** Text color. */
+    text: string;
+}
+/** Registration-side business face: the roster, theme write, scrim write, custom write. */
 export interface DreamSkinInjected {
     /** Shipped presets in display order. */
     presets: readonly DreamSkinPreset[];
@@ -9,6 +20,8 @@ export interface DreamSkinInjected {
     select: (id: string) => void;
     /** Persist the wallpaper scrim strength (0..1). */
     setScrimStrength: (value: number) => void;
+    /** Persist the custom theme and apply it. */
+    saveCustomTheme: (custom: CustomThemeInput) => void;
 }
 /** Full component props. */
 export type DreamSkinSettingsProps = PropsRuntime<'settings.section'> & PropsStore<ReturnType<typeof createDreamSkinStore>> & InjectFace<DreamSkinInjected>;
@@ -17,5 +30,5 @@ export type DreamSkinSettingsProps = PropsRuntime<'settings.section'> & PropsSto
  * @param props - composed slot props.
  * @returns the section element tree.
  */
-export declare function DreamSkinSettings({ useStore, presets, select, setScrimStrength }: DreamSkinSettingsProps): import("react").JSX.Element;
+export declare function DreamSkinSettings({ useStore, presets, select, setScrimStrength, saveCustomTheme, }: DreamSkinSettingsProps): import("react").JSX.Element;
 //# sourceMappingURL=DreamSkinSettings.d.ts.map

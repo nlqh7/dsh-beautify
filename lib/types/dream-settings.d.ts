@@ -12,6 +12,17 @@ export interface DreamSkinSettings {
     themeId: string;
     /** Wallpaper scrim (readability overlay) strength, 0..1. */
     scrimStrength: number;
+    /** Custom theme config; present once the user creates their own theme. */
+    customTheme?: {
+        /** Wallpaper image URL (data URI or http(s)). */
+        wallpaperUrl: string;
+        /** Accent color (brand). */
+        accent: string;
+        /** Background color. */
+        background: string;
+        /** Text color. */
+        text: string;
+    };
 }
 /** Durable theme schema; also the wire envelope the browser scope validates against. */
 export declare const DreamSkinSettingsSchema: z<DreamSkinSettings>;

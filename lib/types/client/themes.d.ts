@@ -25,6 +25,8 @@ export interface DreamSkinPalette {
  * 0 (no scrim, wallpaper fully visible) to 1 (full default scrim).
  */
 export declare function buildScrim(p: DreamSkinPalette, wallpaper: Wallpaper, strength: number): string;
+/** Build a full theme definition from a palette and an optional wallpaper (custom themes). */
+export declare function buildThemeDefinition(id: string, colorScheme: 'light' | 'dark', p: DreamSkinPalette, wallpaper?: Wallpaper): ThemeDefinition;
 /** One selectable Dream Skin preset. */
 export interface DreamSkinPreset {
     /** theme id (the setTheme argument). */

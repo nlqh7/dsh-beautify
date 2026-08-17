@@ -1,15 +1,27 @@
 /**
  * 外观（Appearance）settings section: 明暗模式切换 + 本地主题网格 + 壁纸遮罩
- * 强度滑块，悬停预览壁纸。选择写入持久化 settings（通过 injected 回调）。
+ * 强度滑块 + 自定义主题，悬停预览壁纸。选择写入持久化 settings。
  */
 import { useState } from 'react'
 import type { InjectFace, PropsRuntime, PropsStore } from '@deepseek-ai/dsh-client-ui-slots'
 import type { createDreamSkinStore } from './settings-store.ts'
 import type { DreamSkinPreset } from './themes.ts'
-import { Slider } from './ui/index.ts'
+import { Button, Slider } from './ui/index.ts'
 import css from './DreamSkinSettings.module.css'
 
-/** Registration-side business face: the roster, theme write, and scrim write. */
+/** Custom-theme form shape persisted to the settings document. */
+export interface CustomThemeInput {
+  /** Wallpaper image URL (data URI or http(s)). */
+  wallpaperUrl: string
+  /** Accent (brand) color. */
+  accent: string
+  /** Background color. */
+  background: string
+  /** Text color. */
+  text: string
+}
+
+/** Registration-side business face: the roster, theme write, scrim write, custom write. */
 export interface DreamSkinInjected {
   /** Shipped presets in display order. */
   presets: readonly DreamSkinPreset[]
@@ -17,6 +29,8 @@ export interface DreamSkinInjected {
   select: (id: string) => void
   /** Persist the wallpaper scrim strength (0..1). */
   setScrimStrength: (value: number) => void
+  /** Persist the custom theme and apply it. */
+  saveCustomTheme: (custom: CustomThemeInput) => void
 }
 
 /** Full component props. */
@@ -49,10 +63,18 @@ function PaletteIcon() {
  * @param props - composed slot props.
  * @returns the section element tree.
  */
-export function DreamSkinSettings({ useStore, presets, select, setScrimStrength }: DreamSkinSettingsProps) {
+export function DreamSkinSettings({
+  useStore, presets, select, setScrimStrength, saveCustomTheme,
+}: DreamSkinSettingsProps) {
   const preference = useStore(s => s.preference)
   const scrimStrength = useStore(s => s.scrimStrength)
   const [hovered, setHovered] = useState<string | null>(null)
+  const [custom, setCustom] = useState<CustomThemeInput>({
+    wallpaperUrl: '',
+    accent: '#c8a55a',
+    background: '#111318',
+    text: '#f0f0f0',
+  })
   const hoveredPreset = hovered === null
     ? undefined
     : presets.find(p => p.id === hovered && p.wallpaper !== undefined)
@@ -113,6 +135,31 @@ export function DreamSkinSettings({ useStore, presets, select, setScrimStrength 
       <div className={css.section}>
         <div className={css.sectionTitle}>细节</div>
         <Slider label="壁纸遮罩强度" value={scrimStrength} onChange={setScrimStrength} />
+      </div>
+      <div className={css.section}>
+        <div className={css.sectionTitle}>自定义主题</div>
+        <input
+          className={css.textInput}
+          type="text"
+          placeholder="壁纸 URL（https:// 或 data:image/...）"
+          value={custom.wallpaperUrl}
+          onChange={(e) => { setCustom(c => ({ ...c, wallpaperUrl: e.target.value })) }}
+        />
+        <div className={css.colorRow}>
+          <label className={css.colorField}>
+            强调
+            <input type="color" value={custom.accent} onChange={(e) => { setCustom(c => ({ ...c, accent: e.target.value })) }} />
+          </label>
+          <label className={css.colorField}>
+            背景
+            <input type="color" value={custom.background} onChange={(e) => { setCustom(c => ({ ...c, background: e.target.value })) }} />
+          </label>
+          <label className={css.colorField}>
+            文字
+            <input type="color" value={custom.text} onChange={(e) => { setCustom(c => ({ ...c, text: e.target.value })) }} />
+          </label>
+        </div>
+        <Button onClick={() => { saveCustomTheme(custom) }}>应用自定义主题</Button>
       </div>
       {hoveredPreset?.wallpaper !== undefined && (
         <div className={css.preview}>
