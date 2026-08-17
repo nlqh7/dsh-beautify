@@ -75,14 +75,20 @@ export function apply(ctx: ClientContext): void {
   let bound: BoundActions<typeof store> | undefined
   let scrimDispose: (() => void) | undefined
   let customDispose: (() => void) | undefined
+  let appliedScrimKey = ''
 
-  // Rebuild the wallpaper scrim layer from the given strength.
+  // Rebuild the wallpaper scrim layer from the given strength. Guarded against
+  // re-entry: overrideTokens emits theme/change, whose listener calls this
+  // again; skipping the identical rebuild breaks that cycle.
   const applyScrim = (strength: number): void => {
-    scrimDispose?.()
-    scrimDispose = undefined
     const theme = ctx.theme.getTheme()
     const preset = DREAM_SKIN_PRESETS.find((p) => p.id === theme.preference)
     bound?.syncScrim(strength)
+    const key = `${theme.preference}\u0000${strength}`
+    if (key === appliedScrimKey) return
+    appliedScrimKey = key
+    scrimDispose?.()
+    scrimDispose = undefined
     if (preset?.wallpaper === undefined || strength >= 0.98) return
     const bg = buildScrim(preset.palette, preset.wallpaper, strength)
     scrimDispose = ctx.theme.overrideTokens('scrim', {
