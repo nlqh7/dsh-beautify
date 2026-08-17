@@ -38,6 +38,22 @@ export function apply(ctx: ClientContext): void {
     return () => { for (const dispose of disposers) dispose() }
   })
 
+  // 诊断：describe 返回的 namespaces 列表（确认 dream-skin 是否在 Host 侧注册）
+  {
+    const connection = ctx.get('connection') as { api: { settings: { describe: (input: Record<string, never>) => Promise<unknown> } } } | undefined
+    const timer = ctx.get('timer') as { setTimeout: (cb: () => void, ms: number) => () => void } | undefined
+    if (connection !== undefined && timer !== undefined) {
+      timer.setTimeout(() => {
+        void connection.api.settings.describe({}).then((raw) => {
+          const value = (raw as { result: { value: { namespaces: Array<{ ns: string }> } } }).result?.value
+          console.log('[dsh-dream-skin] describe namespaces:', JSON.stringify(value?.namespaces?.map((n) => n.ns)))
+        }).catch((error: unknown) => {
+          console.log('[dsh-dream-skin] describe ERR:', error instanceof Error ? error.message : String(error))
+        })
+      }, 1500)
+    }
+  }
+
   const host = ctx.settingsScope.bind<DreamSkinSettingsPrefs>({ namespace: DREAM_SKIN_NAMESPACE })
   {
     const scopeSnap = host.getSnapshot()
