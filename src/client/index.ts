@@ -33,11 +33,18 @@ export function apply(ctx: ClientContext): void {
 
   const host = ctx.settingsScope.bind<DreamSkinSettingsPrefs>({ namespace: DREAM_SKIN_NAMESPACE })
 
-  // Restore the persisted selection once the presets above are registered.
-  const saved = host.getSnapshot().value?.themeId
-  if (saved !== undefined && saved !== 'system' && DREAM_SKIN_PRESETS.some((preset) => preset.id === saved)) {
-    ctx.theme.setTheme(saved)
+  // Restore the persisted selection once the snapshot is ready — the bind
+  // starts `loading`, so a single getSnapshot can miss the saved value.
+  const restore = (): void => {
+    const snapshot = host.getSnapshot()
+    if (snapshot.status !== 'ready') return
+    const saved = snapshot.value?.themeId
+    if (saved === undefined || saved === 'system') return
+    const registered = ctx.theme.getTheme().themes.some((theme) => theme.id === saved)
+    if (registered) ctx.theme.setTheme(saved)
   }
+  restore()
+  ctx.effect(() => host.subscribe(restore))
 
   const store = createDreamSkinStore()
   let bound: BoundActions<typeof store> | undefined
@@ -64,7 +71,7 @@ export function apply(ctx: ClientContext): void {
     name: 'settings.section',
     id: 'dream-skin',
     order: 25,
-    label: 'Dream Skin',
+    label: '外观',
     store,
     inject: injected,
   }, DreamSkinSettings))

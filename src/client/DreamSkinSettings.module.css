@@ -1,32 +1,47 @@
 .root {
   display: flex;
   flex-direction: column;
-  gap: 8px;
+  gap: 16px;
   padding: 16px;
 }
 
-.hint {
-  font-size: 12px;
-  line-height: 1.5;
-  color: var(--dsw-alias-label-secondary);
-  margin-bottom: 4px;
-}
-
-.card {
+.header {
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 10px 12px;
-  border: 1px solid var(--dsw-alias-border-l1);
-  border-radius: 8px;
-  background: var(--dsw-alias-bg-layer-1);
+  gap: 8px;
+  font-size: 14px;
+  font-weight: 600;
   color: var(--dsw-alias-label-primary);
-  cursor: pointer;
-  font-size: 13px;
-  text-align: left;
 }
 
-.card:hover {
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.sectionTitle {
+  font-size: 12px;
+  color: var(--dsw-alias-label-secondary);
+}
+
+.modeRow {
+  display: flex;
+  gap: 8px;
+}
+
+.modeButton {
+  flex: 1;
+  padding: 8px 10px;
+  border-radius: 8px;
+  border: 1px solid var(--dsw-alias-border-l1);
+  background: var(--dsw-alias-bg-layer-1);
+  color: var(--dsw-alias-label-primary);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.modeButton:hover {
   border-color: var(--dsw-alias-border-l2);
 }
 
@@ -35,17 +50,40 @@
   box-shadow: 0 0 0 1px var(--dsw-alias-brand-primary);
 }
 
-.swatchRow {
-  display: inline-flex;
-  gap: 4px;
-  flex-shrink: 0;
+.grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  gap: 10px;
 }
 
-.swatch {
-  width: 14px;
-  height: 14px;
-  border-radius: 4px;
+.tile {
+  display: flex;
+  flex-direction: column;
+  padding: 0;
   border: 1px solid var(--dsw-alias-border-l1);
+  border-radius: 10px;
+  overflow: hidden;
+  background: var(--dsw-alias-bg-layer-1);
+  cursor: pointer;
+  text-align: left;
+}
+
+.tile:hover {
+  border-color: var(--dsw-alias-border-l2);
+}
+
+.tilePreview {
+  height: 72px;
+  display: block;
+}
+
+.tileLabel {
+  padding: 6px 8px;
+  font-size: 12px;
+  color: var(--dsw-alias-label-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
 .preview {

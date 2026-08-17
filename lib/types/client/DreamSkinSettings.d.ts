@@ -5,13 +5,13 @@ import type { DreamSkinPreset } from './themes.ts';
 export interface DreamSkinInjected {
     /** Shipped presets in display order. */
     presets: readonly DreamSkinPreset[];
-    /** Switch the theme preference to a preset id, or `system` to reset. */
+    /** Switch the theme preference to a preset id, a built-in mode, or `system`. */
     select: (id: string) => void;
 }
 /** Full component props. */
 export type DreamSkinSettingsProps = PropsRuntime<'settings.section'> & PropsStore<ReturnType<typeof createDreamSkinStore>> & InjectFace<DreamSkinInjected>;
 /**
- * Render the Dream Skin settings section.
+ * Render the appearance settings section.
  * @param props - composed slot props.
  * @returns the section element tree.
  */
