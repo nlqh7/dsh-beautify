@@ -20,6 +20,9 @@ import type { DreamSkinSettings as DreamSkinSettingsPrefs } from '../dream-setti
 /** Required services: theme registry, slot system, and the durable settings scope. */
 export const inject = ['theme', 'slots', 'settingsScope']
 
+/** Renders nothing: ui-theme's appearance row is superseded by the 外观 section. */
+const HiddenAppearanceRow = (): null => null
+
 /**
  * Register every Dream Skin preset, restore the persisted selection, and
  * mount the switching section.
@@ -75,4 +78,13 @@ export function apply(ctx: ClientContext): void {
     store,
     inject: injected,
   }, DreamSkinSettings))
+
+  // Shadow ui-theme's appearance row: light/dark/system + themes now live in
+  // the 外观 section, so the General row would be a duplicate.
+  ctx.slots.inject('settings.general.item', () => ctx.slots.register({
+    name: 'settings.general.item',
+    id: 'appearance',
+    order: 10,
+    priority: -1,
+  }, HiddenAppearanceRow))
 }
