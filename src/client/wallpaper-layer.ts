@@ -126,7 +126,7 @@ function emit() { for (const fn of [...listeners]) fn(); }
 function subscribe(fn) { listeners.add(fn); return () => listeners.delete(fn); }
 
 // ── React hook for the picker UI ────────────────────────────────────────────
-function useStore() {
+export function useStore() {
   const [, setTick] = React.useState(0);
   React.useEffect(() => subscribe(() => setTick((n) => n + 1)), []);
   return selection;
@@ -148,7 +148,7 @@ function persistSelection() {
   } catch { /* ignore */ }
 }
 
-async function loadInventory() {
+export async function loadInventory() {
   selection.loading = true;
   emit();
   try {
@@ -382,7 +382,7 @@ function importPlaylistIntoDraft(playlist) {
   emit();
 }
 
-function applySelection(id) {
+export function applySelection(id) {
   selection.id = id || "";
   persistSelection();
   if (!selection.id) {
@@ -404,6 +404,24 @@ function applySelection(id) {
   selection.type = w.type;
   syncRotationTimer();
   emit();
+}
+
+/** Set one effect knob by kind: 'scrim' | 'border' | 'blur' | 'wallpaperBlur'. */
+export function setWeEffect(kind, value) {
+  if (kind === 'scrim') selection.scrim = value / 100;
+  else if (kind === 'border') selection.border = value / 100;
+  else if (kind === 'blur') selection.blur = value;
+  else if (kind === 'wallpaperBlur') selection.wallpaperBlur = value;
+  persistSelection();
+  applyEffects();
+  emit();
+}
+
+/** Toggle play/pause of the active wallpaper. */
+export function toggleWePlay() {
+  selection.playing = !selection.playing;
+  emit();
+  syncLayers();
 }
 
 // ── Behind-body layer: wallpaper + scrim (plain DOM, NOT a slot) ───────────

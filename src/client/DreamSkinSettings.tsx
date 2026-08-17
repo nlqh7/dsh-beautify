@@ -7,6 +7,7 @@ import type { InjectFace, PropsRuntime, PropsStore } from '@deepseek-ai/dsh-clie
 import type { createDreamSkinStore } from './settings-store.ts'
 import type { DreamSkinPreset } from './themes.ts'
 import { Button, Slider } from './ui/index.ts'
+import { useStore as useWallpaperStore, applySelection, setWeEffect } from './wallpaper-layer.ts'
 import css from './DreamSkinSettings.module.css'
 
 /** Custom-theme form shape persisted to the settings document. */
@@ -55,6 +56,44 @@ function PaletteIcon() {
       <circle cx="11" cy="7.5" r="1.5" />
       <circle cx="15.5" cy="8.5" r="1.5" />
     </svg>
+  )
+}
+
+/** Wallpaper Engine control block: pick a wallpaper and tune blur/scrim/border/glass. */
+function WallpaperEngineBlock() {
+  const sel = useWallpaperStore() as {
+    id: string
+    loaded: boolean
+    scrim: number
+    border: number
+    blur: number
+    wallpaperBlur: number
+    inventory: { wallpapers: Array<{ id: string; title: string; playable: boolean }>; error: unknown }
+  }
+  const inventory = sel.inventory
+  const wallpapers = Array.isArray(inventory.wallpapers) ? inventory.wallpapers.filter((w) => w.playable) : []
+  return (
+    <div className={css.section}>
+      <div className={css.sectionTitle}>壁纸引擎（Wallpaper Engine）</div>
+      {inventory.error
+        ? <div className={css.hint}>{String(inventory.error)}</div>
+        : !sel.loaded
+          ? <div className={css.hint}>扫描中…</div>
+          : (
+            <>
+              <select className={css.textInput} value={sel.id} onChange={(e) => { applySelection(e.target.value) }}>
+                <option value="">— 无（关闭）—</option>
+                {wallpapers.map((w) => (
+                  <option key={w.id} value={w.id}>{w.title}</option>
+                ))}
+              </select>
+              <Slider label="壁纸模糊" value={sel.wallpaperBlur} min={0} max={60} step={1} format={(v) => `${v}px`} onChange={(v) => { setWeEffect('wallpaperBlur', v) }} />
+              <Slider label="暗化" value={sel.scrim} min={0} max={1} step={0.01} onChange={(v) => { setWeEffect('scrim', Math.round(v * 100)) }} />
+              <Slider label="边框" value={sel.border} min={0} max={1} step={0.01} onChange={(v) => { setWeEffect('border', Math.round(v * 100)) }} />
+              <Slider label="玻璃" value={sel.blur} min={0} max={40} step={1} format={(v) => `${v}px`} onChange={(v) => { setWeEffect('blur', v) }} />
+            </>
+          )}
+    </div>
   )
 }
 
@@ -161,6 +200,7 @@ export function DreamSkinSettings({
         </div>
         <Button onClick={() => { saveCustomTheme(custom) }}>应用自定义主题</Button>
       </div>
+      <WallpaperEngineBlock />
       {hoveredPreset?.wallpaper !== undefined && (
         <div className={css.preview}>
           <img src={hoveredPreset.wallpaper.url} alt="" draggable={false} />

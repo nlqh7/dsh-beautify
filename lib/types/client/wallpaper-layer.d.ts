@@ -28,5 +28,69 @@
  *      playlist is imported as the first list on first run so the feature
  *      starts working out of the box.
  */
+export declare function useStore(): {
+    url: null;
+    type: null;
+    playing: boolean;
+    loading: boolean;
+    rotationTimer: null;
+    editing: null;
+    inventory: {
+        installDir: null;
+        wallpapers: never[];
+        total: number;
+        portableCount: number;
+        playlists: never[];
+        error: null;
+    };
+    loaded: boolean;
+    scrim: number;
+    border: number;
+    blur: number;
+    wallpaperBlur: number;
+    rotationEnabled: boolean;
+    rotationInterval: number;
+    rotationGroupId: string;
+    rotationGroups: never[];
+    rotationSeeded: boolean;
+    id: string;
+} | {
+    url: null;
+    type: null;
+    playing: boolean;
+    loading: boolean;
+    rotationTimer: null;
+    editing: null;
+    inventory: {
+        installDir: null;
+        wallpapers: never[];
+        total: number;
+        portableCount: number;
+        playlists: never[];
+        error: null;
+    };
+    loaded: boolean;
+    id: any;
+    scrim: any;
+    border: any;
+    blur: any;
+    wallpaperBlur: any;
+    rotationEnabled: boolean;
+    rotationGroupId: any;
+    rotationGroups: {
+        id: any;
+        name: any;
+        interval: any;
+        order: string;
+        wallpaperIds: any;
+    }[];
+    rotationSeeded: boolean;
+};
+export declare function loadInventory(): Promise<void>;
+export declare function applySelection(id: any): void;
+/** Set one effect knob by kind: 'scrim' | 'border' | 'blur' | 'wallpaperBlur'. */
+export declare function setWeEffect(kind: any, value: any): void;
+/** Toggle play/pause of the active wallpaper. */
+export declare function toggleWePlay(): void;
 export declare function initWallpaperLayer(ctx: any): void;
 //# sourceMappingURL=wallpaper-layer.d.ts.map

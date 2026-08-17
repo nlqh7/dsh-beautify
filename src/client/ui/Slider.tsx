@@ -13,10 +13,12 @@ export interface SliderProps {
   max?: number
   /** Step (default 0.01). */
   step?: number
-  /** Visible label; the current value is appended as a percentage. */
+  /** Visible label; the current value is appended as a percentage by default. */
   label: string
   /** Change callback with the new numeric value. */
   onChange: (value: number) => void
+  /** Optional formatter for the displayed value (defaults to percent). */
+  format?: (value: number) => string
 }
 
 /**
@@ -24,10 +26,11 @@ export interface SliderProps {
  * @param props - slider props.
  * @returns the labeled range input.
  */
-export function Slider({ value, min = 0, max = 1, step = 0.01, label, onChange }: SliderProps) {
+export function Slider({ value, min = 0, max = 1, step = 0.01, label, onChange, format }: SliderProps) {
+  const display = format === undefined ? `${Math.round(value * 100)}%` : format(value)
   return (
     <label className={css.row}>
-      <span className={css.label}>{label}：{Math.round(value * 100)}%</span>
+      <span className={css.label}>{label}：{display}</span>
       <input
         className={css.input}
         type="range"
