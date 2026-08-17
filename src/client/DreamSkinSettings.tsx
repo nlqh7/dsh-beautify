@@ -108,6 +108,7 @@ export function DreamSkinSettings({
   const preference = useStore(s => s.preference)
   const scrimStrength = useStore(s => s.scrimStrength)
   const [hovered, setHovered] = useState<string | null>(null)
+  const [collapsed, setCollapsed] = useState(true)
   const [custom, setCustom] = useState<CustomThemeInput>({
     wallpaperUrl: '',
     accent: '#c8a55a',
@@ -143,9 +144,9 @@ export function DreamSkinSettings({
         </div>
       </div>
       <div className={css.section}>
-        <div className={css.sectionTitle}>主题</div>
+        <div className={css.sectionTitle}>主题（{presets.length}）</div>
         <div className={css.grid}>
-          {presets.map((p) => {
+          {(collapsed ? presets.slice(0, 8) : presets).map((p) => {
             const selected = preference === p.id
             const style = p.wallpaper !== undefined
               ? {
@@ -170,6 +171,11 @@ export function DreamSkinSettings({
             )
           })}
         </div>
+        {presets.length > 8 && (
+          <Button variant="ghost" onClick={() => { setCollapsed(c => !c) }}>
+            {collapsed ? `查看全部主题（${presets.length}）` : '收起主题'}
+          </Button>
+        )}
       </div>
       <div className={css.section}>
         <div className={css.sectionTitle}>细节</div>

@@ -1,1 +1,1 @@
-{"version":3,"file":"wallpapers.d.ts","sourceRoot":"","sources":["../../../src/client/wallpapers.ts"],"names":[],"mappings":"AAAA,MAAM,WAAW,SAAS;IAAG,GAAG,EAAE,MAAM,CAAC;IAAC,MAAM,EAAE,MAAM,CAAC;IAAC,MAAM,EAAE,MAAM,CAAA;CAAE;AAE1E,eAAO,MAAM,UAAU,EAAE,MAAM,CAAC,MAAM,EAAE,SAAS,CAIhD,CAAA"}
+{"version":3,"file":"wallpapers.d.ts","sourceRoot":"","sources":["../../../src/client/wallpapers.ts"],"names":[],"mappings":"AAAA,MAAM,WAAW,SAAS;IAAG,GAAG,EAAE,MAAM,CAAC;IAAC,MAAM,EAAE,MAAM,CAAC;IAAC,MAAM,EAAE,MAAM,CAAA;CAAE;AAE1E,eAAO,MAAM,UAAU,EAAE,MAAM,CAAC,MAAM,EAAE,SAAS,CAKhD,CAAA"}
