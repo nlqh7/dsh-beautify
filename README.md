@@ -1,3 +1,5 @@
+<img width="2559" height="1341" alt="image" src="https://github.com/user-attachments/assets/08dcdaec-67e3-4f8a-a2e5-cc93e85b431e" />
+
 # dsh-dream-skin
 
 给 DeepSeek Harness 换肤的插件：把 [Codex-Dream-Skin](https://github.com/Fei-Away/Codex-Dream-Skin) 的**主题配色 + 壁纸背景**带进 DSH 的**原生主题系统**（`theme` service），不是 CSS 注入 hack。设置页一键切换，配色 + 壁纸即时生效。
