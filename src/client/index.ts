@@ -111,6 +111,7 @@ export function apply(ctx: ClientContext): void {
 
   // Restore persisted state: custom theme first, then the selection.
   const prefs = readPrefs()
+  console.log('[dsh-beautify] restore prefs:', JSON.stringify(prefs), '| ls:', localStorage.getItem(STORAGE_KEY))
   applyCustomTheme(prefs.customTheme)
   if (prefs.themeId !== 'system') {
     const registered = ctx.theme.getTheme().themes.some((theme) => theme.id === prefs.themeId)
@@ -134,10 +135,12 @@ export function apply(ctx: ClientContext): void {
     return {
       presets: DREAM_SKIN_PRESETS,
       select: (id: string) => {
+        console.log('[dsh-beautify] select', id)
         ctx.theme.setTheme(id)
         const next = readPrefs()
         next.themeId = id
         writePrefs(next)
+        console.log('[dsh-beautify] localStorage readback:', localStorage.getItem(STORAGE_KEY))
       },
       setScrimStrength: (value: number) => {
         const next = readPrefs()
