@@ -1,7 +1,8 @@
 /**
  * Dream Skin client plugin: register the shipped color skins on the native
- * theme service, persist the selection + scrim strength to the Host settings
- * scope, apply the scrim as a dynamic token layer, and mount the 外观 section.
+ * theme service, persist the selection + scrim strength to localStorage
+ * (browser-local, refresh-safe), apply the scrim as a dynamic token layer,
+ * and mount the 外观 section.
  */
 import type { ClientContext } from '@deepseek-ai/dsh-client-runtime/client'
 // Type-only: pulls the theme service Context merge (ctx.theme) and its events.
@@ -15,17 +16,47 @@ import type { DreamSkinPalette } from './themes.ts'
 import type { Wallpaper } from './wallpapers.ts'
 import { createDreamSkinStore } from './settings-store.ts'
 import { DreamSkinSettings } from './DreamSkinSettings.tsx'
-import type { DreamSkinInjected } from './DreamSkinSettings.tsx'
-import {
-  DREAM_SKIN_NAMESPACE, DREAM_SKIN_THEME_FIELD, DEFAULT_SCRIM_STRENGTH,
-} from '../dream-settings.ts'
-import type { DreamSkinSettings as DreamSkinSettingsPrefs } from '../dream-settings.ts'
+import type { CustomThemeInput, DreamSkinInjected } from './DreamSkinSettings.tsx'
+import { DEFAULT_SCRIM_STRENGTH } from '../dream-settings.ts'
 
-/** Required services: theme registry, slot system, and the durable settings scope. */
-export const inject = ['theme', 'slots', 'settingsScope']
+/** Required services: theme registry and the slot system. */
+export const inject = ['theme', 'slots']
 
 /** Renders nothing: ui-theme's appearance row is superseded by the 外观 section. */
 const HiddenAppearanceRow = (): null => null
+
+/** localStorage key for the persisted appearance prefs. */
+const STORAGE_KEY = 'dsh-dream-skin:prefs'
+
+/** Persisted appearance state (browser-local, refresh-safe). */
+interface StoredPrefs {
+  themeId: string
+  scrimStrength: number
+  customTheme?: CustomThemeInput
+}
+
+/** Read persisted prefs, falling back to defaults on malformed or missing data. */
+function readPrefs(): StoredPrefs {
+  try {
+    const raw = localStorage.getItem(STORAGE_KEY)
+    if (raw === null) return { themeId: 'system', scrimStrength: DEFAULT_SCRIM_STRENGTH }
+    const parsed = JSON.parse(raw) as Partial<StoredPrefs>
+    return {
+      themeId: typeof parsed.themeId === 'string' ? parsed.themeId : 'system',
+      scrimStrength: typeof parsed.scrimStrength === 'number'
+        ? parsed.scrimStrength
+        : DEFAULT_SCRIM_STRENGTH,
+      ...(parsed.customTheme === undefined ? {} : { customTheme: parsed.customTheme }),
+    }
+  } catch {
+    return { themeId: 'system', scrimStrength: DEFAULT_SCRIM_STRENGTH }
+  }
+}
+
+/** Persist appearance prefs. */
+function writePrefs(prefs: StoredPrefs): void {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify(prefs))
+}
 
 /**
  * Register every Dream Skin preset, restore persisted state, and mount the
@@ -38,39 +69,15 @@ export function apply(ctx: ClientContext): void {
     return () => { for (const dispose of disposers) dispose() }
   })
 
-  // 诊断：describe 返回的 namespaces 列表（确认 dream-skin 是否在 Host 侧注册）
-  {
-    const connection = ctx.get('connection') as { api: { settings: { describe: (input: Record<string, never>) => Promise<unknown> } } } | undefined
-    const timer = ctx.get('timer') as { setTimeout: (cb: () => void, ms: number) => () => void } | undefined
-    if (connection !== undefined && timer !== undefined) {
-      timer.setTimeout(() => {
-        void connection.api.settings.describe({}).then((raw) => {
-          const value = (raw as { result: { value: { namespaces: Array<{ ns: string }> } } }).result?.value
-          console.log('[dsh-dream-skin] describe namespaces:', JSON.stringify(value?.namespaces?.map((n) => n.ns)))
-        }).catch((error: unknown) => {
-          console.log('[dsh-dream-skin] describe ERR:', error instanceof Error ? error.message : String(error))
-        })
-      }, 1500)
-    }
-  }
-
-  const host = ctx.settingsScope.bind<DreamSkinSettingsPrefs>({ namespace: DREAM_SKIN_NAMESPACE })
-  {
-    const scopeSnap = host.getSnapshot()
-    console.log(`[dsh-dream-skin] settings scope: status=${scopeSnap.status} mode=${scopeSnap.mode} writable=${scopeSnap.writable}`)
-  }
   const store = createDreamSkinStore()
   let bound: BoundActions<typeof store> | undefined
   let scrimDispose: (() => void) | undefined
+  let customDispose: (() => void) | undefined
 
-  // Rebuild the wallpaper scrim layer from the persisted strength. The preset
-  // already embeds the default-strength scrim; this layer replaces it.
-  const applyScrim = (): void => {
+  // Rebuild the wallpaper scrim layer from the given strength.
+  const applyScrim = (strength: number): void => {
     scrimDispose?.()
     scrimDispose = undefined
-    const snapshot = host.getSnapshot()
-    if (snapshot.status !== 'ready') return
-    const strength = snapshot.value?.scrimStrength ?? DEFAULT_SCRIM_STRENGTH
     const theme = ctx.theme.getTheme()
     const preset = DREAM_SKIN_PRESETS.find((p) => p.id === theme.preference)
     bound?.syncScrim(strength)
@@ -81,22 +88,10 @@ export function apply(ctx: ClientContext): void {
     })
   }
 
-  // Restore the persisted theme once the snapshot is ready — the bind starts
-  // `loading`, so a single getSnapshot can miss the saved value.
-  const restoreTheme = (): void => {
-    const snapshot = host.getSnapshot()
-    if (snapshot.status !== 'ready') return
-    const saved = snapshot.value?.themeId
-    if (saved === undefined || saved === 'system') return
-    const registered = ctx.theme.getTheme().themes.some((theme) => theme.id === saved)
-    if (registered && ctx.theme.getTheme().preference !== saved) ctx.theme.setTheme(saved)
-  }
-  // Register (or refresh) the user's custom theme from persisted settings.
-  let customDispose: (() => void) | undefined
-  const applyCustomTheme = (): void => {
+  // Register (or refresh) the user's custom theme.
+  const applyCustomTheme = (custom: CustomThemeInput | undefined): void => {
     customDispose?.()
     customDispose = undefined
-    const custom = host.getSnapshot().value?.customTheme
     if (custom === undefined || custom.wallpaperUrl === '') return
     const palette: DreamSkinPalette = {
       background: custom.background,
@@ -114,19 +109,19 @@ export function apply(ctx: ClientContext): void {
     customDispose = ctx.theme.register(buildThemeDefinition('custom', 'dark', palette, wallpaper))
   }
 
-  applyCustomTheme()
-  restoreTheme()
-  applyScrim()
-  ctx.effect(() => host.subscribe(() => { applyCustomTheme(); restoreTheme(); applyScrim() }))
-  ctx.effect(() => host.subscribe(() => {
-    const snap = host.getSnapshot()
-    console.log(`[dsh-dream-skin] scope change: status=${snap.status} writable=${snap.writable} mode=${snap.mode}`)
-  }))
+  // Restore persisted state: custom theme first, then the selection.
+  const prefs = readPrefs()
+  applyCustomTheme(prefs.customTheme)
+  if (prefs.themeId !== 'system') {
+    const registered = ctx.theme.getTheme().themes.some((theme) => theme.id === prefs.themeId)
+    if (registered) ctx.theme.setTheme(prefs.themeId)
+  }
+  applyScrim(prefs.scrimStrength)
 
   // Theme switch: mirror the preference and re-apply the scrim to the new theme.
   ctx.on('theme/change', (snapshot: ThemeSnapshot) => {
     bound?.syncPreference(snapshot.preference, snapshot.revision)
-    applyScrim()
+    applyScrim(readPrefs().scrimStrength)
   })
 
   const injected = (actions: BoundActions<typeof store>): DreamSkinInjected => {
@@ -135,21 +130,28 @@ export function apply(ctx: ClientContext): void {
     // first render (the store's revision guard drops stale duplicates).
     const snapshot = ctx.theme.getTheme()
     bound.syncPreference(snapshot.preference, snapshot.revision)
-    applyScrim()
+    bound.syncScrim(readPrefs().scrimStrength)
     return {
       presets: DREAM_SKIN_PRESETS,
       select: (id: string) => {
-        const snap = host.getSnapshot()
-        console.log(`[dsh-dream-skin] select ${id}: status=${snap.status} writable=${snap.writable}`)
         ctx.theme.setTheme(id)
-        void host.set(DREAM_SKIN_THEME_FIELD, id)
+        const next = readPrefs()
+        next.themeId = id
+        writePrefs(next)
       },
       setScrimStrength: (value: number) => {
-        void host.set('scrimStrength', value)
+        const next = readPrefs()
+        next.scrimStrength = value
+        writePrefs(next)
+        applyScrim(value)
       },
-      saveCustomTheme: (custom: { wallpaperUrl: string; accent: string; background: string; text: string }) => {
-        void host.set('customTheme', custom)
-        void host.set(DREAM_SKIN_THEME_FIELD, 'custom')
+      saveCustomTheme: (custom: CustomThemeInput) => {
+        const next = readPrefs()
+        next.customTheme = custom
+        next.themeId = 'custom'
+        writePrefs(next)
+        applyCustomTheme(custom)
+        ctx.theme.setTheme('custom')
       },
     }
   }
