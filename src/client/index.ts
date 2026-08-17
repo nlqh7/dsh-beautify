@@ -66,10 +66,10 @@ function writePrefs(prefs: StoredPrefs): void {
  */
 export function apply(ctx: ClientContext): void {
   initWallpaperLayer(ctx)
-  ctx.effect(() => {
-    const disposers = DREAM_SKIN_PRESETS.map((preset) => ctx.theme.register(preset.definition))
-    return () => { for (const dispose of disposers) dispose() }
-  })
+  // Register presets synchronously so the persisted-theme restore below can
+  // resolve them immediately (ctx.effect callbacks run after apply returns).
+  const presetDisposers = DREAM_SKIN_PRESETS.map((preset) => ctx.theme.register(preset.definition))
+  ctx.effect(() => () => { for (const dispose of presetDisposers) dispose() })
 
   const store = createDreamSkinStore()
   let bound: BoundActions<typeof store> | undefined
@@ -122,7 +122,9 @@ export function apply(ctx: ClientContext): void {
   console.log('[dsh-beautify] restore prefs:', JSON.stringify(prefs), '| ls:', localStorage.getItem(STORAGE_KEY))
   applyCustomTheme(prefs.customTheme)
   if (prefs.themeId !== 'system') {
-    const registered = ctx.theme.getTheme().themes.some((theme) => theme.id === prefs.themeId)
+    const themeSnapshot = ctx.theme.getTheme()
+    const registered = themeSnapshot.themes.some((theme) => theme.id === prefs.themeId)
+    console.log('[dsh-beautify] restore check: themeId=', prefs.themeId, 'registered=', registered, 'themes=', themeSnapshot.themes.map((t) => t.id).join(','))
     if (registered) ctx.theme.setTheme(prefs.themeId)
   }
   applyScrim(prefs.scrimStrength)
