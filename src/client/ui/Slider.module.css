@@ -1,0 +1,14 @@
+.row {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.label {
+  font-size: 12px;
+  color: var(--dsw-alias-label-secondary);
+}
+
+.input {
+  accent-color: var(--dsw-alias-brand-primary);
+}

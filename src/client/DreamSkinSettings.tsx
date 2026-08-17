@@ -1,19 +1,22 @@
 /**
- * 外观（Appearance）settings section: 明暗模式切换 + 本地主题网格，悬停预览
- * 壁纸。选择写入持久化 settings（通过 injected select 回调）。
+ * 外观（Appearance）settings section: 明暗模式切换 + 本地主题网格 + 壁纸遮罩
+ * 强度滑块，悬停预览壁纸。选择写入持久化 settings（通过 injected 回调）。
  */
 import { useState } from 'react'
 import type { InjectFace, PropsRuntime, PropsStore } from '@deepseek-ai/dsh-client-ui-slots'
 import type { createDreamSkinStore } from './settings-store.ts'
 import type { DreamSkinPreset } from './themes.ts'
+import { Slider } from './ui/index.ts'
 import css from './DreamSkinSettings.module.css'
 
-/** Registration-side business face: the roster and the theme write. */
+/** Registration-side business face: the roster, theme write, and scrim write. */
 export interface DreamSkinInjected {
   /** Shipped presets in display order. */
   presets: readonly DreamSkinPreset[]
   /** Switch the theme preference to a preset id, a built-in mode, or `system`. */
   select: (id: string) => void
+  /** Persist the wallpaper scrim strength (0..1). */
+  setScrimStrength: (value: number) => void
 }
 
 /** Full component props. */
@@ -46,8 +49,9 @@ function PaletteIcon() {
  * @param props - composed slot props.
  * @returns the section element tree.
  */
-export function DreamSkinSettings({ useStore, presets, select }: DreamSkinSettingsProps) {
+export function DreamSkinSettings({ useStore, presets, select, setScrimStrength }: DreamSkinSettingsProps) {
   const preference = useStore(s => s.preference)
+  const scrimStrength = useStore(s => s.scrimStrength)
   const [hovered, setHovered] = useState<string | null>(null)
   const hoveredPreset = hovered === null
     ? undefined
@@ -105,6 +109,10 @@ export function DreamSkinSettings({ useStore, presets, select }: DreamSkinSettin
             )
           })}
         </div>
+      </div>
+      <div className={css.section}>
+        <div className={css.sectionTitle}>细节</div>
+        <Slider label="壁纸遮罩强度" value={scrimStrength} onChange={setScrimStrength} />
       </div>
       {hoveredPreset?.wallpaper !== undefined && (
         <div className={css.preview}>

@@ -1,0 +1,23 @@
+.button {
+  padding: 8px 12px;
+  border-radius: 8px;
+  border: 1px solid var(--dsw-alias-border-l1);
+  background: var(--dsw-alias-bg-layer-1);
+  color: var(--dsw-alias-label-primary);
+  font-size: 12px;
+  cursor: pointer;
+  transition: border-color 0.15s ease;
+}
+
+.button:hover {
+  border-color: var(--dsw-alias-border-l2);
+}
+
+.ghost {
+  background: transparent;
+}
+
+.selected {
+  border-color: var(--dsw-alias-brand-primary);
+  box-shadow: 0 0 0 1px var(--dsw-alias-brand-primary);
+}

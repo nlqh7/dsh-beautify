@@ -1,21 +1,24 @@
 /**
- * Dream Skin settings store: a mirror of the theme service preference. The
- * plugin's apply-world theme/change listener is the only writer; the settings
- * component reads via props.useStore.
+ * Dream Skin settings store: a mirror of the theme preference plus the scrim
+ * strength. The plugin's apply-world listeners are the only writers; the
+ * settings component reads via props.useStore.
  */
 import { defineStore, type EngineStoreHandle } from '@deepseek-ai/dsh-client-runtime/client'
 
-/** Store state mirrored from the theme snapshot. */
+/** Store state mirrored from the theme + settings snapshots. */
 export interface DreamSkinState {
   /** Persisted preference (selection state reads this, never the resolved active theme). */
   preference: string
+  /** Wallpaper scrim strength, 0..1. */
+  scrimStrength: number
   /** Service revision; -1 until first sync so revision 0 lands as a change. */
   revision: number
 }
 
 /** Declared action shape giving the exported factory a stable return type. */
 type DreamSkinActions = {
-  sync: (draft: DreamSkinState, preference: string, revision: number) => void
+  syncPreference: (draft: DreamSkinState, preference: string, revision: number) => void
+  syncScrim: (draft: DreamSkinState, scrimStrength: number) => void
 }
 
 /**
@@ -24,12 +27,15 @@ type DreamSkinActions = {
  */
 export function createDreamSkinStore(): EngineStoreHandle<DreamSkinState, DreamSkinActions> {
   return defineStore({
-    init: (): DreamSkinState => ({ preference: 'system', revision: -1 }),
+    init: (): DreamSkinState => ({ preference: 'system', scrimStrength: 0.7, revision: -1 }),
     actions: {
-      sync: (d, preference: string, revision: number) => {
+      syncPreference: (d, preference: string, revision: number) => {
         if (revision <= d.revision) return
         d.preference = preference
         d.revision = revision
+      },
+      syncScrim: (d, scrimStrength: number) => {
+        d.scrimStrength = scrimStrength
       },
     },
   })

@@ -8,13 +8,19 @@ export const DREAM_SKIN_NAMESPACE = 'dream-skin'
 /** Field carrying the selected theme id. */
 export const DREAM_SKIN_THEME_FIELD = 'themeId'
 
+/** Default wallpaper scrim strength when the settings document has no override. */
+export const DEFAULT_SCRIM_STRENGTH = 0.7
+
 /** Durable theme section shared by the Host schema and the browser scope. */
 export interface DreamSkinSettings {
   /** Selected theme id, or `system` for the built-in scheme. */
   themeId: string
+  /** Wallpaper scrim (readability overlay) strength, 0..1. */
+  scrimStrength: number
 }
 
 /** Durable theme schema; also the wire envelope the browser scope validates against. */
 export const DreamSkinSettingsSchema: z<DreamSkinSettings> = z.object({
   [DREAM_SKIN_THEME_FIELD]: z.string().default('system'),
+  scrimStrength: z.number().default(DEFAULT_SCRIM_STRENGTH),
 })

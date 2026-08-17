@@ -6,9 +6,10 @@
  */
 import type { ThemeDefinition, ThemeTokens } from '@deepseek-ai/dsh-client-ui-theme/client'
 import { WALLPAPERS, type Wallpaper } from './wallpapers.ts'
+import { DEFAULT_SCRIM_STRENGTH } from '../dream-settings.ts'
 
 /** Dream Skin palette: the ten colors the source themes declare. */
-interface DreamSkinPalette {
+export interface DreamSkinPalette {
   background: string
   panel: string
   panelAlt: string
@@ -31,12 +32,20 @@ function hexToRgba(color: string, alpha: number): string {
   return `rgba(${r}, ${g}, ${b}, ${alpha})`
 }
 
+/**
+ * Build the wallpaper background CSS: a left-to-right readability scrim over
+ * the wallpaper, focused by the wallpaper's own focus point. Strength is
+ * 0 (no scrim, wallpaper fully visible) to 1 (full default scrim).
+ */
+export function buildScrim(p: DreamSkinPalette, wallpaper: Wallpaper, strength: number): string {
+  const s = Math.max(0, Math.min(1, strength))
+  return `linear-gradient(90deg, ${hexToRgba(p.background, 0.72 * s)} 0%, ${hexToRgba(p.background, 0.42 * s)} 38%, ${hexToRgba(p.background, 0.06 * s)} 66%, transparent 84%), url("${wallpaper.url}") ${Math.round(wallpaper.focusX * 100)}% ${Math.round(wallpaper.focusY * 100)}% / cover no-repeat`
+}
+
 /** Map a Dream Skin palette onto the DSW alias tokens, folding in the wallpaper. */
 function toTokens(id: string, p: DreamSkinPalette): ThemeTokens {
   const wallpaper = WALLPAPERS[id]
-  const base = wallpaper !== undefined
-    ? `linear-gradient(90deg, ${hexToRgba(p.background, 0.72)} 0%, ${hexToRgba(p.background, 0.42)} 38%, ${hexToRgba(p.background, 0.06)} 66%, transparent 84%), url("${wallpaper.url}") ${Math.round(wallpaper.focusX * 100)}% ${Math.round(wallpaper.focusY * 100)}% / cover no-repeat`
-    : p.background
+  const base = wallpaper !== undefined ? buildScrim(p, wallpaper, DEFAULT_SCRIM_STRENGTH) : p.background
   return {
     '--dsw-alias-bg-base': base,
     '--dsw-alias-bg-layer-1': p.panel,
@@ -63,6 +72,8 @@ export interface DreamSkinPreset {
   swatches: readonly string[]
   /** Wallpaper metadata when this preset ships a background image. */
   wallpaper?: Wallpaper
+  /** Original palette, for dynamic scrim rebuilds. */
+  palette: DreamSkinPalette
 }
 
 function preset(id: string, label: string, colorScheme: 'light' | 'dark', palette: DreamSkinPalette): DreamSkinPreset {
@@ -76,6 +87,7 @@ function preset(id: string, label: string, colorScheme: 'light' | 'dark', palett
     }),
     swatches: Object.freeze([palette.background, palette.accent, palette.text]),
     ...(WALLPAPERS[id] === undefined ? {} : { wallpaper: WALLPAPERS[id] }),
+    palette,
   }
 }
 

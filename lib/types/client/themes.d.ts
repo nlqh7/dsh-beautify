@@ -6,6 +6,25 @@
  */
 import type { ThemeDefinition } from '@deepseek-ai/dsh-client-ui-theme/client';
 import { type Wallpaper } from './wallpapers.ts';
+/** Dream Skin palette: the ten colors the source themes declare. */
+export interface DreamSkinPalette {
+    background: string;
+    panel: string;
+    panelAlt: string;
+    accent: string;
+    accentAlt: string;
+    secondary: string;
+    highlight: string;
+    text: string;
+    muted: string;
+    line: string;
+}
+/**
+ * Build the wallpaper background CSS: a left-to-right readability scrim over
+ * the wallpaper, focused by the wallpaper's own focus point. Strength is
+ * 0 (no scrim, wallpaper fully visible) to 1 (full default scrim).
+ */
+export declare function buildScrim(p: DreamSkinPalette, wallpaper: Wallpaper, strength: number): string;
 /** One selectable Dream Skin preset. */
 export interface DreamSkinPreset {
     /** theme id (the setTheme argument). */
@@ -18,6 +37,8 @@ export interface DreamSkinPreset {
     swatches: readonly string[];
     /** Wallpaper metadata when this preset ships a background image. */
     wallpaper?: Wallpaper;
+    /** Original palette, for dynamic scrim rebuilds. */
+    palette: DreamSkinPalette;
 }
 /** Shipped local presets, in display order. */
 export declare const DREAM_SKIN_PRESETS: readonly DreamSkinPreset[];
