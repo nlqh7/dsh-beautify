@@ -39,6 +39,10 @@ export function apply(ctx: ClientContext): void {
   })
 
   const host = ctx.settingsScope.bind<DreamSkinSettingsPrefs>({ namespace: DREAM_SKIN_NAMESPACE })
+  {
+    const scopeSnap = host.getSnapshot()
+    console.log(`[dsh-dream-skin] settings scope: status=${scopeSnap.status} mode=${scopeSnap.mode} writable=${scopeSnap.writable}`)
+  }
   const store = createDreamSkinStore()
   let bound: BoundActions<typeof store> | undefined
   let scrimDispose: (() => void) | undefined

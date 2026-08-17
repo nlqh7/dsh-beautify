@@ -17,7 +17,9 @@ const DREAM_SKIN_NS = settingsNamespace(DREAM_SKIN_NAMESPACE)
  * @param ctx - Host context that may acquire the settings service.
  */
 export function apply(ctx: Context): void {
+  console.log('[dsh-dream-skin] host apply executing')
   ctx.inject(['settings'], (settingsCtx) => {
+    console.log('[dsh-dream-skin] settings service available, registering namespace')
     settingsCtx.settings.register(DREAM_SKIN_NS, DreamSkinSettingsSchema)
   })
 }
