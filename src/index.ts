@@ -30,5 +30,18 @@ export function apply(ctx: Context): void {
     } catch (error) {
       console.log('[dsh-dream-skin] register FAILED:', error instanceof Error ? error.message : String(error))
     }
+    const svc = settingsCtx.settings as unknown as { describe?: () => Array<{ ns: string }> }
+    setTimeout(() => {
+      if (typeof svc.describe === 'function') {
+        try {
+          const descriptors = svc.describe()
+          console.log('[dsh-dream-skin] host describe ns:', JSON.stringify(descriptors.map(d => d.ns)))
+        } catch (error) {
+          console.log('[dsh-dream-skin] host describe ERR:', error instanceof Error ? error.message : String(error))
+        }
+      } else {
+        console.log('[dsh-dream-skin] settings has no describe; keys:', Object.keys(settingsCtx.settings as object).slice(0, 12))
+      }
+    }, 3000)
   })
 }
