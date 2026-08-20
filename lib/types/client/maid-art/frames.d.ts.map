@@ -1,0 +1,1 @@
+{"version":3,"file":"frames.d.ts","sourceRoot":"","sources":["../../../../src/client/maid-art/frames.ts"],"names":[],"mappings":"AAAA,OAAO,EAAsC,KAAK,SAAS,EAAE,MAAM,0BAA0B,CAAA;AAE7F,MAAM,WAAW,eAAe;IAC9B,IAAI,IAAI,IAAI,CAAA;IACZ,OAAO,CAAC,IAAI,EAAE,SAAS,GAAG,IAAI,CAAA;IAC9B,OAAO,IAAI,IAAI,CAAA;CAChB;AAoKD,wBAAgB,qBAAqB,CAAC,IAAI,EAAE,WAAW,GAAG,eAAe,CAsHxE"}

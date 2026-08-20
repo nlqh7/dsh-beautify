@@ -25,26 +25,6 @@
   color: var(--dsw-alias-label-secondary);
 }
 
-.modeRow {
-  display: flex;
-  gap: 8px;
-}
-
-.modeButton {
-  flex: 1;
-  padding: 8px 10px;
-  border-radius: 8px;
-  border: 1px solid var(--dsw-alias-border-l1);
-  background: var(--dsw-alias-bg-layer-1);
-  color: var(--dsw-alias-label-primary);
-  font-size: 12px;
-  cursor: pointer;
-}
-
-.modeButton:hover {
-  border-color: var(--dsw-alias-border-l2);
-}
-
 .selected {
   border-color: var(--dsw-alias-brand-primary);
   box-shadow: 0 0 0 1px var(--dsw-alias-brand-primary);
@@ -52,8 +32,111 @@
 
 .grid {
   display: grid;
-  grid-template-columns: repeat(auto-fill, minmax(150px, 1fr));
+  grid-template-columns: repeat(auto-fill, minmax(132px, 1fr));
   gap: 10px;
+}
+
+.hint {
+  font-size: 12px;
+  color: var(--dsw-alias-label-secondary);
+}
+
+.groupHeader {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 9px 12px;
+  border: 1px solid var(--dsw-alias-border-l1);
+  border-radius: 10px;
+  background: var(--dsw-alias-bg-layer-1);
+  color: var(--dsw-alias-label-primary);
+  font-size: 12px;
+  cursor: pointer;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.groupHeader:hover {
+  border-color: var(--dsw-alias-border-l2);
+  background: var(--dsw-alias-bg-layer-1);
+}
+
+.groupHeaderText {
+  font-weight: 500;
+}
+
+/* The right-side header actions (count + go) sit in one stable cluster so the
+   trailing label never shifts when the count changes. */
+.groupHeaderActions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  flex: none;
+  margin-left: auto;
+}
+
+.paramGroup {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+/* Groups inside the unified frame separate with a hairline, not a nested box. */
+.paramGroup + .paramGroup {
+  border-top: 1px solid var(--dsw-alias-border-l1);
+  padding-top: 12px;
+}
+
+.paramGroupTitle {
+  font-size: 11px;
+  color: var(--dsw-alias-label-secondary);
+}
+
+.chevron {
+  font-size: 10px;
+  color: var(--dsw-alias-label-secondary);
+  transition: transform 0.25s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.chevronOpen {
+  transform: rotate(180deg);
+}
+
+.collapse {
+  display: grid;
+  grid-template-rows: 0fr;
+  transition: grid-template-rows 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+.collapse[data-open='true'] {
+  grid-template-rows: 1fr;
+}
+
+/* Expanded content sits in one unified frame that speaks the header's
+   language (hairline border + raised surface), so the reveal reads as a
+   single card instead of loose floating elements. */
+.collapse[data-open='true'] .collapseInner {
+  border: 1px solid var(--dsw-alias-border-l1);
+  border-radius: 10px;
+  background: var(--dsw-alias-bg-layer-1);
+  padding: 12px;
+}
+
+.collapseInner {
+  min-height: 0;
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .collapse {
+    transition: none;
+  }
+  .chevron {
+    transition: none;
+  }
 }
 
 .tile {
@@ -66,15 +149,76 @@
   background: var(--dsw-alias-bg-layer-1);
   cursor: pointer;
   text-align: left;
+  transition: border-color 0.15s ease, transform 0.15s ease, box-shadow 0.15s ease;
 }
 
 .tile:hover {
   border-color: var(--dsw-alias-border-l2);
+  transform: translateY(-1px);
+}
+
+.tile.selected:hover {
+  border-color: var(--dsw-alias-brand-primary);
 }
 
 .tilePreview {
-  height: 72px;
+  height: 76px;
   display: block;
+}
+
+.solidRow {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 10px;
+}
+
+.solidLabel {
+  flex: 1;
+  min-width: 0;
+  font-size: 12px;
+  color: var(--dsw-alias-label-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.solidSwatches {
+  display: flex;
+  gap: 4px;
+  flex: none;
+}
+
+.solidSwatch {
+  width: 12px;
+  height: 12px;
+  border-radius: 3px;
+  border: 1px solid var(--dsw-alias-border-l1);
+}
+
+.groupCount {
+  padding: 1px 8px;
+  border-radius: 999px;
+  background: var(--dsw-alias-bg-layer-1);
+  color: var(--dsw-alias-label-tertiary);
+  font-size: 11px;
+  font-variant-numeric: tabular-nums;
+  white-space: nowrap;
+}
+
+.groupGo {
+  padding: 2px 10px;
+  border-radius: 999px;
+  background: var(--dsw-alias-interactive-bg-hover);
+  color: var(--dsw-alias-label-primary);
+  font-size: 11px;
+  font-weight: 500;
+  white-space: nowrap;
+  transition: background 0.15s ease;
+}
+
+.groupHeader:hover .groupGo {
+  background: var(--dsw-alias-interactive-bg-active);
 }
 
 .tileLabel {
@@ -86,26 +230,100 @@
   text-overflow: ellipsis;
 }
 
-.preview {
-  position: fixed;
-  right: 24px;
-  top: 50%;
-  transform: translateY(-50%);
-  width: 320px;
-  aspect-ratio: 16 / 10;
-  overflow: hidden;
-  border-radius: 10px;
-  border: 1px solid var(--dsw-alias-border-l1);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.35);
-  pointer-events: none;
-  z-index: 10;
+/* Wallpaper picker modal: wide enough for the tile grid. */
+.pickerModal {
+  width: min(760px, 92vw);
 }
 
-.preview img {
+.weGrid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(176px, 1fr));
+  gap: 10px;
+  max-height: 360px;
+  overflow-y: auto;
+}
+
+.weTile {
+  display: flex;
+  flex-direction: column;
+  padding: 0;
+  border: 1px solid var(--dsw-alias-border-l1);
+  border-radius: 8px;
+  overflow: hidden;
+  background: var(--dsw-alias-bg-layer-1);
+  cursor: pointer;
+  text-align: left;
+  transition: border-color 0.15s ease, transform 0.15s ease;
+}
+
+.weTile:hover {
+  border-color: var(--dsw-alias-border-l2);
+  transform: translateY(-1px);
+}
+
+.weTile.selected {
+  border-color: var(--dsw-alias-brand-primary);
+  box-shadow: 0 0 0 1px var(--dsw-alias-brand-primary);
+}
+
+.weTileImage {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  object-fit: cover;
+  display: block;
+}
+
+.weTileNoPreview {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px;
+  box-sizing: border-box;
+  background: var(--dsw-alias-bg-layer-1);
+  color: var(--dsw-alias-label-secondary);
+  font-size: 11px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.weTileLabel {
+  padding: 4px 6px;
+  font-size: 11px;
+  color: var(--dsw-alias-label-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.wePreviewImage {
   width: 100%;
   height: 100%;
   object-fit: cover;
   display: block;
+}
+
+/* Current-wallpaper preview band at the top of the WE picker modal.
+   Bounded height keeps a large wallpaper from blowing the modal out;
+   the grid below stays the primary picker. */
+.modalPreview {
+  height: 180px;
+  border-radius: 10px;
+  overflow: hidden;
+  border: 1px solid var(--dsw-alias-border-l1);
+  background: var(--dsw-alias-bg-layer-1);
+  margin-bottom: 12px;
+}
+
+.wePreviewPlaceholder {
+  width: 100%;
+  height: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  color: var(--dsw-alias-label-secondary);
+  font-size: 12px;
 }
 
 .textInput {
@@ -136,4 +354,126 @@
   border: none;
   background: none;
   cursor: pointer;
+}
+
+.advancedToggle {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 10px;
+  border: 1px dashed var(--dsw-alias-border-l2);
+  border-radius: 8px;
+  background: none;
+  color: var(--dsw-alias-label-secondary);
+  font-size: 12px;
+  cursor: pointer;
+}
+
+.advancedToggle:hover {
+  border-color: var(--dsw-alias-brand-primary);
+  color: var(--dsw-alias-label-primary);
+}
+
+.tweakBlock {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  padding: 10px 12px;
+  border: 1px solid var(--dsw-alias-border-l1);
+  border-radius: 10px;
+  background: var(--dsw-alias-bg-layer-1);
+}
+
+/* Custom-cursor upload rows (custom skin selected). */
+.uploadRow {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 4px 0;
+}
+.uploadLabel {
+  flex: 0 0 64px;
+  font-size: 12px;
+  color: var(--dsw-alias-label-primary);
+}
+.uploadThumb {
+  width: 28px;
+  height: 28px;
+  object-fit: contain;
+  border-radius: 6px;
+  background: rgba(128, 128, 128, 0.12);
+  image-rendering: -webkit-optimize-contrast;
+}
+.uploadBtn {
+  display: inline-flex;
+  align-items: center;
+  padding: 3px 10px;
+  font-size: 12px;
+  color: var(--dsw-alias-label-primary);
+  border: 1px solid var(--dsw-alias-border-l1);
+  border-radius: 8px;
+  background: var(--dsw-alias-bg-layer-1);
+  cursor: pointer;
+}
+.uploadBtn:hover {
+  border-color: var(--dsw-alias-brand, #4d6bfe);
+}
+
+/* Per-state cursor toggles (which states use the whale art vs the native cursor). */
+.cursorStateRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 26px;
+  padding: 2px 0;
+  cursor: pointer;
+}
+.cursorStateLabel {
+  font-size: 12px;
+  color: var(--dsw-alias-label-primary);
+}
+.cursorStateToggle {
+  flex: none;
+  width: 16px;
+  height: 16px;
+  margin: 0;
+  accent-color: var(--dsw-alias-brand, #4d6bfe);
+  cursor: pointer;
+}
+
+/* Host feature-health notice shown when a sub-feature failed to mount. */
+.statusNotice {
+  margin: 0 0 10px;
+  padding: 10px 12px;
+  border: 1px solid rgba(214, 69, 69, 0.4);
+  border-radius: 10px;
+  background: rgba(214, 69, 69, 0.08);
+}
+.statusNoticeTitle {
+  font-size: 13px;
+  font-weight: 600;
+  color: #d64545;
+  margin-bottom: 6px;
+}
+.statusNoticeRow {
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+  font-size: 12px;
+  margin-top: 4px;
+}
+.statusNoticeName {
+  flex: 0 0 auto;
+  color: #d64545;
+  font-weight: 600;
+}
+.statusNoticeReason {
+  color: var(--dsw-alias-label-secondary);
+  word-break: break-all;
+}
+.statusNoticeHint {
+  margin-top: 6px;
+  font-size: 11px;
+  color: var(--dsw-alias-label-tertiary);
 }

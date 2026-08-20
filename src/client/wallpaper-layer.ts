@@ -417,6 +417,36 @@ export function setWeEffect(kind, value) {
   emit();
 }
 
+// ── Global wallpaper knobs (blur/focus/scrim apply to any wallpaper) ────────
+const WALLPAPER_KEY = 'dsh-beautify:wallpaper';
+// -1 sentinels for focusX/focusY/scrim mean "use the preset default" until the
+// user first drags that knob; blur defaults to a sharp 0px.
+const WALLPAPER_DEFAULTS = { blur: 0, focusX: -1, focusY: -1, scrim: -1 };
+
+/** Read the global wallpaper knobs; malformed or missing data yields the defaults. */
+export function readWallpaper() {
+  try {
+    const raw = JSON.parse(localStorage.getItem(WALLPAPER_KEY) || 'null');
+    if (raw === null || typeof raw !== 'object' || Array.isArray(raw)) return { ...WALLPAPER_DEFAULTS };
+    return {
+      blur: clampNum(raw.blur, 0, 60, WALLPAPER_DEFAULTS.blur),
+      focusX: typeof raw.focusX === 'number' ? Math.max(-1, Math.min(1, raw.focusX)) : WALLPAPER_DEFAULTS.focusX,
+      focusY: typeof raw.focusY === 'number' ? Math.max(-1, Math.min(1, raw.focusY)) : WALLPAPER_DEFAULTS.focusY,
+      scrim: typeof raw.scrim === 'number' ? Math.max(-1, Math.min(1, raw.scrim)) : WALLPAPER_DEFAULTS.scrim,
+    };
+  } catch { return { ...WALLPAPER_DEFAULTS }; }
+}
+
+/** Merge wallpaper knob overrides ('blur' | 'focusX' | 'focusY' | 'scrim'). */
+export function setWallpaper(partial) {
+  const w = readWallpaper();
+  for (const k of Object.keys(partial)) {
+    w[k] = partial[k];
+  }
+  try { localStorage.setItem(WALLPAPER_KEY, JSON.stringify(w)); } catch { /* ignore */ }
+  emit();
+}
+
 /** Toggle play/pause of the active wallpaper. */
 export function toggleWePlay() {
   selection.playing = !selection.playing;
@@ -487,14 +517,71 @@ function syncLayers() {
 }
 
 // ── Effect application: push the knobs into CSS variables ───────────────────
+// Glass knobs (blur/highlight/saturate/border) are global: they live in the
+// shared glass store and apply to every theme, not just WE wallpapers. The WE
+// per-selection store keeps only wallpaper-scoped knobs (scrim, wallpaperBlur).
+const GLASS_KEY = "dsh-beautify:glass";
+const GLASS_DEFAULTS = { blur: 24, saturate: 1.8, highlight: 0.3, border: 0.35 };
+
+/** Read the global glass knobs; malformed or missing data yields the defaults. */
+export function readGlass() {
+  try {
+    const raw = JSON.parse(localStorage.getItem(GLASS_KEY) || "null");
+    if (raw === null) {
+      // First run: inherit the legacy WE glass knobs so existing setups keep
+      // their look after the knobs moved from the WE picker to the global block.
+      const migrated = {
+        blur: clampNum(selection.blur, 0, 40, GLASS_DEFAULTS.blur),
+        saturate: GLASS_DEFAULTS.saturate,
+        highlight: GLASS_DEFAULTS.highlight,
+        border: clampNum(selection.border, 0, 1, GLASS_DEFAULTS.border),
+      };
+      try { localStorage.setItem(GLASS_KEY, JSON.stringify(migrated)); } catch { /* ignore */ }
+      return migrated;
+    }
+    if (raw === null || typeof raw !== "object" || Array.isArray(raw)) return { ...GLASS_DEFAULTS };
+    return {
+      blur: clampNum(raw.blur, 0, 40, GLASS_DEFAULTS.blur),
+      saturate: clampNum(raw.saturate, 1, 3, GLASS_DEFAULTS.saturate),
+      highlight: clampNum(raw.highlight, 0, 0.8, GLASS_DEFAULTS.highlight),
+      border: clampNum(raw.border, 0, 1, GLASS_DEFAULTS.border),
+    };
+  } catch { return { ...GLASS_DEFAULTS }; }
+}
+
+/** Set one glass knob by kind: 'blur' | 'saturate' | 'highlight' | 'border'. */
+export function setGlass(kind, value) {
+  const g = readGlass();
+  g[kind] = value;
+  try { localStorage.setItem(GLASS_KEY, JSON.stringify(g)); } catch { /* ignore */ }
+  applyGlass();
+  emit();
+}
+
+/** Push the glass knobs into body CSS variables and gate the glass rules. */
+export function applyGlass() {
+  const g = readGlass();
+  const s = document.body.style;
+  if (g.blur > 0) {
+    document.body.setAttribute("data-ds-glass", "on");
+    s.setProperty("--we-blur", g.blur + "px");
+    s.setProperty("--we-saturate", String(g.saturate));
+    s.setProperty("--we-glass-highlight", String(g.highlight));
+    s.setProperty("--we-glass-shadow", "0.14");
+    s.setProperty("--we-border-alpha", String(g.border));
+  } else {
+    document.body.removeAttribute("data-ds-glass");
+    s.removeProperty("--we-blur");
+    s.removeProperty("--we-saturate");
+    s.removeProperty("--we-glass-highlight");
+    s.removeProperty("--we-glass-shadow");
+    s.removeProperty("--we-border-alpha");
+  }
+}
+
 function applyEffects() {
   const s = document.body.style;
   s.setProperty("--we-scrim-color", "rgba(0,0,0," + selection.scrim + ")");
-  // Border emphasis: the border tokens are low-alpha hairlines; raise their
-  // alpha via a neutral gray so both light and dark themes stay legible.
-  s.setProperty("--we-border-alpha", String(selection.border));
-  // Glass blur strength in px (0 disables the frosted-glass effect).
-  s.setProperty("--we-blur", selection.blur + "px");
   // Wallpaper blur strength in px (blurs the wallpaper itself).
   s.setProperty("--we-wallpaper-blur", selection.wallpaperBlur + "px");
   // Compensate for the fringe the blur reveals by scaling the layer up.
@@ -519,8 +606,6 @@ function applyEffects() {
 function clearEffects() {
   const s = document.body.style;
   s.removeProperty("--we-scrim-color");
-  s.removeProperty("--we-border-alpha");
-  s.removeProperty("--we-blur");
   s.removeProperty("--we-wallpaper-blur");
   s.removeProperty("--we-wallpaper-scale");
   const scrim = document.getElementById(SCRIM_ID);
@@ -841,6 +926,7 @@ const CSS = `
      (Dark mode is untouched: its white-on-dark text already reads fine.) */
   body[data-we-wallpaper]:not([data-ds-dark-theme]) {
     --dsw-alias-label-primary: rgb(0, 0, 0);
+    --dsw-alias-label-primary-inverted: #ffffff;
     --dsw-alias-label-primary-dimmed: rgb(10, 10, 12);
     --dsw-alias-label-secondary: rgb(40, 42, 46);
     --dsw-alias-label-tertiary: rgb(70, 73, 79);
@@ -869,13 +955,125 @@ const CSS = `
   body[data-we-wallpaper] {
     --dsw-specific-input-major: rgba(255, 255, 255, 0.18);
     --dsw-specific-bubble: rgba(255, 255, 255, 0.14);
+    --dsw-specific-bubble-highlight: rgba(255, 255, 255, 0.18);
+    --dsw-alias-markdown-inline-code: rgba(255, 255, 255, 0.18);
+    --dsw-alias-markdown-tag: rgba(255, 255, 255, 0.16);
+    --dsw-alias-markdown-citation: rgba(255, 255, 255, 0.16);
+    --dsw-alias-markdown-code-block: rgba(255, 255, 255, 0.16);
+    --dsw-alias-markdown-code-block-banner: rgba(255, 255, 255, 0.2);
+    --dsw-alias-markdown-code-segment-selected: rgba(255, 255, 255, 0.22);
+    --dsw-alias-markdown-code-segment-unselected: rgba(255, 255, 255, 0.14);
+    --dsw-alias-markdown-placeholder: rgba(255, 255, 255, 0.45);
+    --dsw-alias-bg-layer-1: rgba(255, 255, 255, 0.08);
+    --dsw-alias-bg-layer-2: rgba(255, 255, 255, 0.1);
+    --dsw-alias-bg-layer-3: rgba(255, 255, 255, 0.12);
+    --dsw-alias-bg-module-platform: rgba(255, 255, 255, 0.08);
+    --dsw-alias-bg-multi-select: rgba(255, 255, 255, 0.16);
+    --dsw-alias-bg-overlay: rgba(255, 255, 255, 0.1);
+    --dsw-alias-bg-skeleton: rgba(255, 255, 255, 0.1);
+    --dsw-alias-border-l1: rgba(255, 255, 255, 0.1);
+    --dsw-alias-border-l2: rgba(255, 255, 255, 0.16);
+    --dsw-alias-border-l2-darkmode-thin: rgba(255, 255, 255, 0.1);
+    --dsw-alias-border-l3: rgba(255, 255, 255, 0.2);
+    --dsw-alias-border-l4: rgba(255, 255, 255, 0.24);
+    --dsw-alias-border-subtle: rgba(255, 255, 255, 0.1);
+    --dsw-alias-label-primary: rgba(255, 255, 255, 0.92);
+    --dsw-alias-label-primary-inverted: #0d0f14;
+    --dsw-alias-label-primary-bluish: rgba(255, 255, 255, 0.7);
+    --dsw-alias-label-primary-dimmed: rgba(255, 255, 255, 0.55);
+    --dsw-alias-label-secondary: rgba(255, 255, 255, 0.7);
+    --dsw-alias-label-tertiary: rgba(255, 255, 255, 0.55);
+    --dsw-alias-label-quaternary: rgba(255, 255, 255, 0.55);
+    --dsw-alias-label-caption: rgba(255, 255, 255, 0.55);
+    --dsw-alias-label-dimmed: rgba(255, 255, 255, 0.45);
+    --dsw-alias-text-primary: rgba(255, 255, 255, 0.92);
+    --dsw-alias-text-tertiary: rgba(255, 255, 255, 0.55);
+    --dsw-alias-fill-tsp-secondary: rgba(255, 255, 255, 0.14);
+    --dsw-specific-login-input: rgba(255, 255, 255, 0.08);
+    --dsw-specific-tip: rgba(255, 255, 255, 0.12);
+    --dsw-specific-sidebar-nav-item-hover: rgba(255, 255, 255, 0.12);
+    --dsw-specific-sidebar-nav-item-active: rgba(255, 255, 255, 0.18);
+    --dsw-specific-sidebar-nav-item-active-accent: rgba(255, 255, 255, 0.18);
+    /* New-session bar + floating pills + buttons + hover states go glassy
+       too, or they stay on the stock near-white while the frame around them
+       turns transparent. */
+    --dsw-alias-button-elevated-fill: rgba(255, 255, 255, 0.16);
+    --dsw-alias-button-floating-fill: rgba(255, 255, 255, 0.16);
+    --dsw-alias-button-floating-hover: rgba(255, 255, 255, 0.22);
+    --dsw-alias-button-primary-fill: rgba(255, 255, 255, 0.22);
+    --dsw-alias-button-primary-hover: rgba(255, 255, 255, 0.28);
+    --dsw-alias-button-primary-dimmed: rgba(255, 255, 255, 0.1);
+    --dsw-alias-button-tool-bar-fill: rgba(255, 255, 255, 0.14);
+    --dsw-alias-button-tool-bar-fill-invisible: rgba(255, 255, 255, 0.08);
+    --dsw-alias-button-tool-bar-hover: rgba(255, 255, 255, 0.2);
+    --dsw-alias-button-ghost-active-fill: rgba(255, 255, 255, 0.16);
+    --dsw-alias-button-ghost-active-border: rgba(255, 255, 255, 0.28);
+    --dsw-alias-button-ghost-active-hover: rgba(255, 255, 255, 0.2);
+    --dsw-alias-interactive-bg-hover: rgba(255, 255, 255, 0.14);
+    --dsw-alias-interactive-bg-active: rgba(255, 255, 255, 0.2);
+    --dsw-alias-interactive-bg-hover-solid: rgba(255, 255, 255, 0.14);
   }
   body[data-ds-dark-theme][data-we-wallpaper] {
     --dsw-specific-input-major: rgba(255, 255, 255, 0.07);
     --dsw-specific-bubble: rgba(255, 255, 255, 0.06);
+    --dsw-specific-bubble-highlight: rgba(255, 255, 255, 0.08);
+    --dsw-alias-markdown-inline-code: rgba(15, 18, 24, 0.45);
+    --dsw-alias-markdown-tag: rgba(15, 18, 24, 0.35);
+    --dsw-alias-markdown-citation: rgba(15, 18, 24, 0.35);
+    --dsw-alias-markdown-code-block: rgba(15, 18, 24, 0.5);
+    --dsw-alias-markdown-code-block-banner: rgba(15, 18, 24, 0.55);
+    --dsw-alias-markdown-code-segment-selected: rgba(255, 255, 255, 0.14);
+    --dsw-alias-markdown-code-segment-unselected: rgba(15, 18, 24, 0.3);
+    --dsw-alias-markdown-placeholder: rgba(255, 255, 255, 0.4);
+    --dsw-alias-bg-layer-1: rgba(255, 255, 255, 0.04);
+    --dsw-alias-bg-layer-2: rgba(255, 255, 255, 0.05);
+    --dsw-alias-bg-layer-3: rgba(255, 255, 255, 0.06);
+    --dsw-alias-bg-module-platform: rgba(255, 255, 255, 0.04);
+    --dsw-alias-bg-multi-select: rgba(255, 255, 255, 0.08);
+    --dsw-alias-bg-overlay: rgba(255, 255, 255, 0.05);
+    --dsw-alias-bg-skeleton: rgba(255, 255, 255, 0.05);
+    --dsw-alias-border-l1: rgba(255, 255, 255, 0.05);
+    --dsw-alias-border-l2: rgba(255, 255, 255, 0.1);
+    --dsw-alias-border-l2-darkmode-thin: rgba(255, 255, 255, 0.05);
+    --dsw-alias-border-l3: rgba(255, 255, 255, 0.12);
+    --dsw-alias-border-l4: rgba(255, 255, 255, 0.14);
+    --dsw-alias-border-subtle: rgba(255, 255, 255, 0.05);
+    --dsw-alias-label-primary: rgba(255, 255, 255, 0.85);
+    --dsw-alias-label-primary-inverted: #0d0f14;
+    --dsw-alias-label-primary-bluish: rgba(255, 255, 255, 0.6);
+    --dsw-alias-label-primary-dimmed: rgba(255, 255, 255, 0.45);
+    --dsw-alias-label-secondary: rgba(255, 255, 255, 0.6);
+    --dsw-alias-label-tertiary: rgba(255, 255, 255, 0.45);
+    --dsw-alias-label-quaternary: rgba(255, 255, 255, 0.45);
+    --dsw-alias-label-caption: rgba(255, 255, 255, 0.45);
+    --dsw-alias-label-dimmed: rgba(255, 255, 255, 0.35);
+    --dsw-alias-text-primary: rgba(255, 255, 255, 0.85);
+    --dsw-alias-text-tertiary: rgba(255, 255, 255, 0.45);
+    --dsw-alias-fill-tsp-secondary: rgba(255, 255, 255, 0.07);
+    --dsw-specific-login-input: rgba(255, 255, 255, 0.04);
+    --dsw-specific-tip: rgba(255, 255, 255, 0.06);
+    --dsw-specific-sidebar-nav-item-hover: rgba(255, 255, 255, 0.06);
+    --dsw-specific-sidebar-nav-item-active: rgba(255, 255, 255, 0.1);
+    --dsw-specific-sidebar-nav-item-active-accent: rgba(255, 255, 255, 0.1);
+    --dsw-alias-button-elevated-fill: rgba(255, 255, 255, 0.08);
+    --dsw-alias-button-floating-fill: rgba(255, 255, 255, 0.08);
+    --dsw-alias-button-floating-hover: rgba(255, 255, 255, 0.12);
+    --dsw-alias-button-primary-fill: rgba(255, 255, 255, 0.12);
+    --dsw-alias-button-primary-hover: rgba(255, 255, 255, 0.16);
+    --dsw-alias-button-primary-dimmed: rgba(255, 255, 255, 0.05);
+    --dsw-alias-button-tool-bar-fill: rgba(255, 255, 255, 0.06);
+    --dsw-alias-button-tool-bar-fill-invisible: rgba(255, 255, 255, 0.04);
+    --dsw-alias-button-tool-bar-hover: rgba(255, 255, 255, 0.1);
+    --dsw-alias-button-ghost-active-fill: rgba(255, 255, 255, 0.08);
+    --dsw-alias-button-ghost-active-border: rgba(255, 255, 255, 0.16);
+    --dsw-alias-button-ghost-active-hover: rgba(255, 255, 255, 0.1);
+    --dsw-alias-interactive-bg-hover: rgba(255, 255, 255, 0.06);
+    --dsw-alias-interactive-bg-active: rgba(255, 255, 255, 0.1);
+    --dsw-alias-interactive-bg-hover-solid: rgba(255, 255, 255, 0.06);
   }
-  body[data-we-wallpaper] [data-composer-card],
-  body[data-we-wallpaper] [class*="_bubble"] {
+  body[data-ds-glass] [data-composer-card],
+  body[data-ds-glass] [class*="_bubble"],
+  body[data-ds-glass] button[class*="newSession"] {
     -webkit-backdrop-filter: blur(var(--we-blur, 24px)) saturate(var(--we-saturate, 1.8)) brightness(1.08);
     backdrop-filter: blur(var(--we-blur, 24px)) saturate(var(--we-saturate, 1.8)) brightness(1.08);
     box-shadow:
@@ -947,5 +1145,7 @@ export function initWallpaperLayer(ctx) {
     });
   }
 
-  loadInventory();
+  // The inventory is scanned lazily: only the Wallpaper Engine picker (and its
+  // refresh button) triggers loadInventory(), so opening the settings section
+  // does not hit /wallpaper-engine/inventory until a change is actually wanted.
 }

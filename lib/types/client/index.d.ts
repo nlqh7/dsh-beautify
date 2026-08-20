@@ -6,7 +6,10 @@
  * built-in, so no registration race).
  */
 import type { ClientContext } from '@deepseek-ai/dsh-client-runtime/client';
-/** Required services: theme registry (for built-in modes) and the slot system. */
+/** Required services: theme registry (for built-in modes), the slot system,
+ * and the sessions runtime (subagent catalog for the baby-whale parade).
+ * `sessions` must be injected explicitly — Cordis contexts are strict proxies
+ * and reading an un-injected property throws, which would kill the plugin. */
 export declare const inject: string[];
 /**
  * Register every Dream Skin preset, restore persisted state, and mount the

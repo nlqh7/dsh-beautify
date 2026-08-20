@@ -90,7 +90,27 @@ export declare function loadInventory(): Promise<void>;
 export declare function applySelection(id: any): void;
 /** Set one effect knob by kind: 'scrim' | 'border' | 'blur' | 'wallpaperBlur'. */
 export declare function setWeEffect(kind: any, value: any): void;
+/** Read the global wallpaper knobs; malformed or missing data yields the defaults. */
+export declare function readWallpaper(): {
+    blur: any;
+    focusX: number;
+    focusY: number;
+    scrim: number;
+};
+/** Merge wallpaper knob overrides ('blur' | 'focusX' | 'focusY' | 'scrim'). */
+export declare function setWallpaper(partial: any): void;
 /** Toggle play/pause of the active wallpaper. */
 export declare function toggleWePlay(): void;
+/** Read the global glass knobs; malformed or missing data yields the defaults. */
+export declare function readGlass(): {
+    blur: any;
+    saturate: any;
+    highlight: any;
+    border: any;
+};
+/** Set one glass knob by kind: 'blur' | 'saturate' | 'highlight' | 'border'. */
+export declare function setGlass(kind: any, value: any): void;
+/** Push the glass knobs into body CSS variables and gate the glass rules. */
+export declare function applyGlass(): void;
 export declare function initWallpaperLayer(ctx: any): void;
 //# sourceMappingURL=wallpaper-layer.d.ts.map

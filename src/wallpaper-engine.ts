@@ -129,6 +129,12 @@ function inferType(file) {
 
 const KINDS = ['scene', 'video', 'web', 'application'];
 
+/** Preview image fallbacks, in order, when project.json omits `preview`. */
+const PREVIEW_FALLBACKS = [
+  'preview.jpg', 'preview.webp', 'preview.png',
+  'scene/preview.jpg', 'scene/preview.webp', 'scene/preview.png',
+];
+
 function readProject(dir) {
   const pj = join(dir, 'project.json');
   if (!existsSync(pj)) return null;
@@ -137,12 +143,21 @@ function readProject(dir) {
     if (!o || typeof o !== 'object' || !o.file) return null;
     let type = typeof o.type === 'string' ? o.type.toLowerCase() : inferType(o.file);
     if (!KINDS.includes(type)) type = 'scene';
+    let preview = typeof o.preview === 'string' && o.preview ? o.preview : null;
+    if (!preview) {
+      // Many workshop projects leave `preview` out; fall back to the well-known
+      // preview image locations so the picker still shows a thumbnail.
+      for (const candidate of PREVIEW_FALLBACKS) {
+        const abs = resolve(dir, candidate);
+        if (existsSync(abs)) { preview = candidate; break; }
+      }
+    }
     return {
       id: basename(dir),
       title: typeof o.title === 'string' ? o.title : basename(dir),
       type,
       file: o.file,
-      preview: typeof o.preview === 'string' ? o.preview : null,
+      preview,
     };
   } catch { return null; }
 }

@@ -9,6 +9,8 @@ shadcn 哲学：组件是**自有源码**（copy-paste 可控），用 DSH 的 `
 |---|---|---|
 | `Button` | `children`, `onClick?`, `selected?`, `variant?`(`default`/`ghost`), `className?` | 带选中态的 token 按钮 |
 | `Slider` | `value`, `min?`(0), `max?`(1), `step?`(0.01), `label`, `onChange` | token 滑块，值显示为百分比 |
+| `Knob` | `label`, `value`, `min?`(0), `max?`(1), `step?`(0.01), `unit?`, `onChange`, `disabled?` | 带数字框+单位的滑块（外观行配方） |
+| `Segmented` | `label`, `value`, `options`, `onSelect` | 等分发丝线框选择器，选中格带业务色 tint |
 
 ## AI 必须遵守的约束
 

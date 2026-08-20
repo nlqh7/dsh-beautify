@@ -12,3 +12,7 @@
 .input {
   accent-color: var(--dsw-alias-brand-primary);
 }
+
+.disabled {
+  opacity: 0.45;
+}

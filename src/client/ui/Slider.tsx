@@ -19,6 +19,8 @@ export interface SliderProps {
   onChange: (value: number) => void
   /** Optional formatter for the displayed value (defaults to percent). */
   format?: (value: number) => string
+  /** Disable the input (dimmed, no drag). */
+  disabled?: boolean
 }
 
 /**
@@ -26,10 +28,10 @@ export interface SliderProps {
  * @param props - slider props.
  * @returns the labeled range input.
  */
-export function Slider({ value, min = 0, max = 1, step = 0.01, label, onChange, format }: SliderProps) {
+export function Slider({ value, min = 0, max = 1, step = 0.01, label, onChange, format, disabled = false }: SliderProps) {
   const display = format === undefined ? `${Math.round(value * 100)}%` : format(value)
   return (
-    <label className={css.row}>
+    <label className={`${css.row}${disabled ? ` ${css.disabled}` : ''}`}>
       <span className={css.label}>{label}：{display}</span>
       <input
         className={css.input}
@@ -38,6 +40,7 @@ export function Slider({ value, min = 0, max = 1, step = 0.01, label, onChange, 
         max={max}
         step={step}
         value={value}
+        disabled={disabled}
         onChange={(e) => { onChange(Number(e.target.value)) }}
       />
     </label>

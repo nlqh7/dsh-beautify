@@ -1,0 +1,39 @@
+/* Segmented picker: evenly split cells in a hairline frame; the active cell
+   carries the business tint, hover answers with the interactive wash. */
+.segmented {
+  display: flex;
+  border: 1px solid var(--dsw-alias-border-l2);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.seg {
+  flex: 1;
+  min-width: 0;
+  height: 28px;
+  padding: 0 12px;
+  border: none;
+  background: transparent;
+  font-size: 12px;
+  line-height: 18px;
+  color: var(--dsw-alias-label-secondary);
+  cursor: pointer;
+  transition: background 0.15s ease, color 0.15s ease;
+}
+
+.seg + .seg {
+  border-left: 1px solid var(--dsw-alias-border-l2);
+}
+
+.seg:hover {
+  background: var(--dsw-alias-interactive-bg-hover);
+}
+
+.active {
+  background: var(--dsw-alias-state-business-tertiary);
+  color: var(--dsw-alias-state-business-primary);
+}
+
+.active:hover {
+  background: var(--dsw-alias-state-business-tertiary);
+}

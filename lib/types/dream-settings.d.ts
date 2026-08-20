@@ -22,6 +22,14 @@ export interface DreamSkinSettings {
         background: string;
         /** Text color. */
         text: string;
+        /** Panel surface color; falls back to the background when unset. */
+        panel?: string;
+        /** Elevated panel surface color; falls back to the background when unset. */
+        panelAlt?: string;
+        /** Secondary text color; falls back to the text when unset. */
+        muted?: string;
+        /** Hairline/border color; falls back to the accent when unset. */
+        line?: string;
     };
 }
 /** Durable theme schema; also the wire envelope the browser scope validates against. */

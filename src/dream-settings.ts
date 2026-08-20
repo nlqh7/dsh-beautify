@@ -12,23 +12,31 @@ export const DREAM_SKIN_THEME_FIELD = 'themeId'
 export const DEFAULT_SCRIM_STRENGTH = 0.7
 
 /** Durable theme section shared by the Host schema and the browser scope. */
-export interface DreamSkinSettings {
-  /** Selected theme id, or `system` for the built-in scheme. */
-  themeId: string
-  /** Wallpaper scrim (readability overlay) strength, 0..1. */
-  scrimStrength: number
-  /** Custom theme config; present once the user creates their own theme. */
-  customTheme?: {
-    /** Wallpaper image URL (data URI or http(s)). */
-    wallpaperUrl: string
-    /** Accent color (brand). */
-    accent: string
-    /** Background color. */
-    background: string
-    /** Text color. */
-    text: string
+  export interface DreamSkinSettings {
+    /** Selected theme id, or `system` for the built-in scheme. */
+    themeId: string
+    /** Wallpaper scrim (readability overlay) strength, 0..1. */
+    scrimStrength: number
+    /** Custom theme config; present once the user creates their own theme. */
+    customTheme?: {
+      /** Wallpaper image URL (data URI or http(s)). */
+      wallpaperUrl: string
+      /** Accent color (brand). */
+      accent: string
+      /** Background color. */
+      background: string
+      /** Text color. */
+      text: string
+      /** Panel surface color; falls back to the background when unset. */
+      panel?: string
+      /** Elevated panel surface color; falls back to the background when unset. */
+      panelAlt?: string
+      /** Secondary text color; falls back to the text when unset. */
+      muted?: string
+      /** Hairline/border color; falls back to the accent when unset. */
+      line?: string
+    }
   }
-}
 
 /** Durable theme schema; also the wire envelope the browser scope validates against. */
 export const DreamSkinSettingsSchema: z<DreamSkinSettings> = z.object({
@@ -39,5 +47,9 @@ export const DreamSkinSettingsSchema: z<DreamSkinSettings> = z.object({
     accent: z.string(),
     background: z.string(),
     text: z.string(),
+    panel: z.string(),
+    panelAlt: z.string(),
+    muted: z.string(),
+    line: z.string(),
   }),
 })

@@ -13,11 +13,13 @@ export interface SliderProps {
     onChange: (value: number) => void;
     /** Optional formatter for the displayed value (defaults to percent). */
     format?: (value: number) => string;
+    /** Disable the input (dimmed, no drag). */
+    disabled?: boolean;
 }
 /**
  * Render a token-styled slider.
  * @param props - slider props.
  * @returns the labeled range input.
  */
-export declare function Slider({ value, min, max, step, label, onChange, format }: SliderProps): import("react").JSX.Element;
+export declare function Slider({ value, min, max, step, label, onChange, format, disabled }: SliderProps): import("react").JSX.Element;
 //# sourceMappingURL=Slider.d.ts.map

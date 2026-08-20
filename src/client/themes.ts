@@ -6,6 +6,7 @@
  */
 import type { ThemeDefinition, ThemeTokens } from '@deepseek-ai/dsh-client-ui-theme/client'
 import { WALLPAPERS, type Wallpaper } from './wallpapers.ts'
+import { WALLPAPER_THUMBS } from './wallpapers-thumbs.ts'
 import { DEFAULT_SCRIM_STRENGTH } from '../dream-settings.ts'
 
 /** Dream Skin palette: the ten colors the source themes declare. */
@@ -32,34 +33,163 @@ function hexToRgba(color: string, alpha: number): string {
   return `rgba(${r}, ${g}, ${b}, ${alpha})`
 }
 
+/** Per-wallpaper user tweaks overriding a preset's shipped defaults. */
+export interface WallpaperTweak {
+  /** Blur radius in px; 0 keeps the wallpaper sharp. */
+  blur: number
+  /** Horizontal focus point, 0..1 (preset value when unset). */
+  focusX: number
+  /** Vertical focus point, 0..1 (preset value when unset). */
+  focusY: number
+}
+
+/** Global wallpaper knobs shared by every wallpaper source. */
+export interface WallpaperKnobs {
+  /** Blur radius in px; 0 keeps the wallpaper sharp. */
+  blur: number
+  /** Horizontal focus point, 0..1 (-1 means the preset default). */
+  focusX: number
+  /** Vertical focus point, 0..1 (-1 means the preset default). */
+  focusY: number
+  /** Scrim strength, 0..1 (-1 means the built-in default). */
+  scrim: number
+}
+
 /**
  * Build the wallpaper background CSS: a left-to-right readability scrim over
  * the wallpaper, focused by the wallpaper's own focus point. Strength is
- * 0 (no scrim, wallpaper fully visible) to 1 (full default scrim).
+ * 0 (no scrim, wallpaper fully visible) to 1 (full default scrim). Tweaks
+ * override the focus point; the blur radius is applied by the caller via a
+ * dedicated wallpaper layer (buildScrim only emits the focus position).
  */
-export function buildScrim(p: DreamSkinPalette, wallpaper: Wallpaper, strength: number): string {
+export function buildScrim(p: DreamSkinPalette, wallpaper: Wallpaper, strength: number, tweak?: Partial<WallpaperTweak>): string {
   const s = Math.max(0, Math.min(1, strength))
+  const fx = Math.max(0, Math.min(1, tweak?.focusX ?? wallpaper.focusX))
+  const fy = Math.max(0, Math.min(1, tweak?.focusY ?? wallpaper.focusY))
   // 基础遮罩下限：即使 strength 为 0，左侧文字区也保留一层遮罩保证可读。
   const a1 = Math.min(0.95, 0.72 * s + 0.18)
   const a2 = Math.min(0.9, 0.42 * s + 0.14)
   const a3 = 0.06 * s + 0.08
-  return `linear-gradient(90deg, ${hexToRgba(p.background, a1)} 0%, ${hexToRgba(p.background, a2)} 38%, ${hexToRgba(p.background, a3)} 66%, transparent 84%), url("${wallpaper.url}") ${Math.round(wallpaper.focusX * 100)}% ${Math.round(wallpaper.focusY * 100)}% / cover no-repeat`
+  return `linear-gradient(90deg, ${hexToRgba(p.background, a1)} 0%, ${hexToRgba(p.background, a2)} 38%, ${hexToRgba(p.background, a3)} 66%, transparent 84%), url("${wallpaper.url}") ${Math.round(fx * 100)}% ${Math.round(fy * 100)}% / cover no-repeat`
 }
 
-/** Build the alias tokens for a palette, folding in the wallpaper when given. */
+/**
+ * Build a programmatic ambient gradient from a palette, so every preset shows
+ * a layered background without shipping image assets: two accent glows over a
+ * diagonal base wash. Inspired by the ambience-first skins of the dsh-web-ui
+ * family, generated from each palette's own colors rather than copied art.
+ */
+export function buildAmbient(p: DreamSkinPalette): string {
+  const glow = (color: string, alpha: number, x: string, y: string, size: string): string =>
+    `radial-gradient(${size} at ${x} ${y}, ${hexToRgba(color, alpha)}, transparent 70%)`
+  return [
+    glow(p.accent, 0.22, '16%', '14%', '85% 70%'),
+    glow(p.accentAlt, 0.14, '85%', '16%', '70% 60%'),
+    glow(p.secondary, 0.10, '52%', '98%', '110% 70%'),
+    `linear-gradient(160deg, ${p.background} 0%, ${p.panelAlt} 100%)`,
+  ].join(', ')
+}
+
+/**
+ * Build the alias tokens for a palette, folding in the wallpaper when given.
+ * The set covers every token the stock layout reads in normal use — surfaces,
+ * markdown blocks, buttons, sidebars, inputs, masks, and scrollbars — so no
+ * element falls back to the stock palette (white-on-white in light modes).
+ */
 function tokensFor(p: DreamSkinPalette, wallpaper: Wallpaper | undefined): ThemeTokens {
-  const base = wallpaper !== undefined ? buildScrim(p, wallpaper, DEFAULT_SCRIM_STRENGTH) : p.background
+  const base = wallpaper !== undefined ? buildScrim(p, wallpaper, DEFAULT_SCRIM_STRENGTH) : buildAmbient(p)
+  const deep = hexToRgba(p.background, 0.92)
+  const soft = hexToRgba(p.background, 0.72)
   return {
     '--dsw-alias-bg-base': base,
     '--dsw-alias-bg-layer-1': p.panel,
     '--dsw-alias-bg-layer-2': p.panelAlt,
+    '--dsw-alias-bg-layer-3': p.panelAlt,
     '--dsw-alias-bg-overlay': p.panelAlt,
+    '--dsw-alias-bg-module-platform': p.panel,
+    '--dsw-alias-bg-multi-select': p.panelAlt,
+    '--dsw-alias-bg-skeleton': p.line,
     '--dsw-alias-border-l1': p.line,
     '--dsw-alias-border-l2': p.line,
+    '--dsw-alias-border-l2-darkmode-thin': p.line,
+    '--dsw-alias-border-l3': p.line,
+    '--dsw-alias-border-l4': p.line,
+    '--dsw-alias-border-inverted': p.line,
+    '--dsw-alias-border-inverted2': p.line,
     '--dsw-alias-brand-primary': p.accent,
+    '--dsw-alias-brand-primary-invert': p.text,
+    '--dsw-alias-brand-text': p.accent,
+    '--dsw-alias-brand-primary-new-colorprimary-new-color': p.accent,
     '--dsw-alias-label-primary': p.text,
+    '--dsw-alias-label-primary-bluish': p.text,
+    '--dsw-alias-label-primary-dimmed': p.muted,
+    '--dsw-alias-label-primary-foreground': p.text,
+    '--dsw-alias-label-primary-inverted': p.text,
     '--dsw-alias-label-secondary': p.muted,
+    '--dsw-alias-label-tertiary': p.muted,
+    '--dsw-alias-label-caption': p.muted,
+    '--dsw-alias-label-dimmed': p.muted,
+    '--dsw-alias-markdown-citation': p.panelAlt,
+    '--dsw-alias-markdown-code-block': p.panelAlt,
+    '--dsw-alias-markdown-code-block-banner': p.panel,
+    '--dsw-alias-markdown-code-segment-selected': p.panel,
+    '--dsw-alias-markdown-code-segment-unselected': p.panelAlt,
+    '--dsw-alias-markdown-inline-code': p.panelAlt,
+    '--dsw-alias-markdown-placeholder': p.panel,
+    '--dsw-alias-markdown-tag': p.panelAlt,
+    '--dsw-alias-button-contrast-fill': p.accent,
+    '--dsw-alias-button-elevated-fill': p.panel,
+    '--dsw-alias-button-floating-fill': p.panel,
+    '--dsw-alias-button-floating-hover': p.panelAlt,
+    '--dsw-alias-button-ghost-active-border': p.accent,
+    '--dsw-alias-button-ghost-active-fill': p.panelAlt,
+    '--dsw-alias-button-ghost-active-hover': p.panelAlt,
+    '--dsw-alias-button-info-fill': p.accent,
+    '--dsw-alias-button-info-hover': p.accentAlt,
+    '--dsw-alias-button-primary-dimmed': p.panelAlt,
+    '--dsw-alias-button-primary-fill': p.accent,
+    '--dsw-alias-button-primary-hover': p.accentAlt,
+    '--dsw-alias-button-tool-bar-fill': soft,
+    '--dsw-alias-button-tool-bar-fill-invisible': hexToRgba(p.background, 0.36),
+    '--dsw-alias-button-tool-bar-hover': deep,
+    '--dsw-alias-interactive-bg-active': hexToRgba(p.text, 0.14),
+    '--dsw-alias-interactive-bg-hover': hexToRgba(p.text, 0.08),
+    '--dsw-alias-interactive-bg-hover-accent': hexToRgba(p.accent, 0.24),
+    '--dsw-alias-interactive-bg-hover-danger': 'rgba(242, 90, 90, 0.15)',
+    '--dsw-alias-interactive-bg-hover-solid': p.panelAlt,
+    '--dsw-alias-scrollbar-bg-l1': p.line,
+    '--dsw-alias-scrollbar-bg-l2': p.line,
+    '--dsw-alias-scrollbar-hover-l1': p.muted,
+    '--dsw-alias-scrollbar-hover-l2': p.muted,
+    '--dsw-alias-state-business-primary': p.accent,
+    '--dsw-alias-state-business-tertiary': p.panelAlt,
+    '--dsw-alias-state-error-primary': 'rgb(239, 68, 68)',
+    '--dsw-alias-state-error-secondary': 'rgb(242, 90, 90)',
+    '--dsw-alias-state-error-tertiary': p.panelAlt,
+    '--dsw-alias-state-success-primary': 'rgb(34, 197, 94)',
+    '--dsw-alias-state-success-secondary': 'rgb(78, 209, 126)',
+    '--dsw-alias-state-success-tertiary': p.panelAlt,
+    '--dsw-alias-state-warn-label': 'rgb(221, 134, 41)',
+    '--dsw-alias-state-warn-primary': 'rgb(245, 158, 11)',
+    '--dsw-alias-state-warn-secondary': 'rgb(247, 173, 49)',
+    '--dsw-alias-state-warn-tertiary': p.panelAlt,
+    '--dsw-alias-toast-bg': deep,
+    '--dsw-alias-tooltip-bg': deep,
+    '--dsw-specific-bubble': p.panel,
+    '--dsw-specific-bubble-highlight': p.panelAlt,
+    '--dsw-specific-input-major': p.panel,
+    '--dsw-specific-login-input': p.panelAlt,
+    '--dsw-specific-menu': p.panelAlt,
+    '--dsw-specific-selector': p.panelAlt,
     '--dsw-specific-sidebar-fill': p.panel,
+    '--dsw-specific-sidebar-nav-item-active': p.panelAlt,
+    '--dsw-specific-sidebar-nav-item-active-accent': p.accent,
+    '--dsw-specific-sidebar-nav-item-hover': p.panelAlt,
+    '--dsw-specific-tip': p.panelAlt,
+    '--dsw-shadow-lv1': '0 2px 4px rgba(2, 6, 14, 0.3)',
+    '--dsw-shadow-lv1-blur': '0 4px 12px rgba(2, 6, 14, 0.25)',
+    '--dsw-shadow-lv2': '0 4px 12px rgba(2, 6, 14, 0.3), 0 2px 8px rgba(2, 6, 14, 0.25)',
+    '--dsw-shadow-lv3': '0 0 1px rgba(2, 6, 14, 0.4), 0 12px 32px rgba(2, 6, 14, 0.45)',
   }
 }
 
@@ -73,9 +203,17 @@ export function buildThemeDefinition(
   return Object.freeze({ id, colorScheme, tokens: Object.freeze(tokensFor(p, wallpaper)) })
 }
 
+/** Resolve a preset's wallpaper from the shipped wallpaper table. */
+function wallpaperFor(id: string): Wallpaper | undefined {
+  const w = WALLPAPERS[id]
+  if (w === undefined) return undefined
+  const thumb = WALLPAPER_THUMBS[id]
+  return thumb === undefined ? w : { ...w, thumb }
+}
+
 /** Map a shipped preset onto its alias tokens. */
 function toTokens(id: string, p: DreamSkinPalette): ThemeTokens {
-  return tokensFor(p, WALLPAPERS[id])
+  return tokensFor(p, wallpaperFor(id))
 }
 
 /** One selectable Dream Skin preset. */
@@ -95,6 +233,7 @@ export interface DreamSkinPreset {
 }
 
 function preset(id: string, label: string, colorScheme: 'light' | 'dark', palette: DreamSkinPalette): DreamSkinPreset {
+  const wp = wallpaperFor(id)
   return {
     id,
     label,
@@ -104,7 +243,7 @@ function preset(id: string, label: string, colorScheme: 'light' | 'dark', palett
       tokens: Object.freeze(toTokens(id, palette)),
     }),
     swatches: Object.freeze([palette.background, palette.accent, palette.text]),
-    ...(WALLPAPERS[id] === undefined ? {} : { wallpaper: WALLPAPERS[id] }),
+    ...(wp === undefined ? {} : { wallpaper: wp }),
     palette,
   }
 }
@@ -112,7 +251,7 @@ function preset(id: string, label: string, colorScheme: 'light' | 'dark', palett
 /** Shipped local presets, in display order. */
 export const DREAM_SKIN_PRESETS: readonly DreamSkinPreset[] = Object.freeze([
   // ── 内置 ──
-  preset('dream-codex', 'Codex 榛樿鏆楄壊', 'dark', {
+  preset('dream-codex', 'Codex Codex 默认暗色', 'dark', {
     background: '#111318',
     panel: '#191c22',
     panelAlt: '#20242b',
@@ -135,18 +274,6 @@ export const DREAM_SKIN_PRESETS: readonly DreamSkinPreset[] = Object.freeze([
     text: '#f3ead7',
     muted: '#b5a386',
     line: 'rgba(200, 165, 90, .28)',
-  }),
-  preset('dream-arina', '妗ユ湰鏈夎彍 路 鏌斿厜鐜懓', 'dark', {
-    background: '#1a1216',
-    panel: '#241a1e',
-    panelAlt: '#2e2026',
-    accent: '#e08aa0',
-    accentAlt: '#f0b3c4',
-    secondary: '#a86a7a',
-    highlight: '#d4728a',
-    text: '#f7eef0',
-    muted: '#c3aab0',
-    line: 'rgba(224, 138, 160, .28)',
   }),
   // ── dreamskin.cc 社区（下载前 30）──
   preset('morning-mist', '晨雾山水', 'light', {
@@ -172,30 +299,6 @@ export const DREAM_SKIN_PRESETS: readonly DreamSkinPreset[] = Object.freeze([
     text: '#f0f0f0',
     muted: '#939393',
     line: '#3f3f3f',
-  }),
-  preset('lucy-moon', '露西', 'dark', {
-    background: '#131214',
-    panel: '#1d1d1e',
-    panelAlt: '#29292b',
-    accent: '#23eaee',
-    accentAlt: '#42edf0',
-    secondary: '#dacf3b',
-    highlight: '#5aeff2',
-    text: '#efeff0',
-    muted: '#939294',
-    line: '#3f3e40',
-  }),
-  preset('moonlit-pine', '月下松岚', 'dark', {
-    background: '#0c1118',
-    panel: '#151c25',
-    panelAlt: '#202a35',
-    accent: '#8095a5',
-    accentAlt: '#a4b4c0',
-    secondary: '#687f73',
-    highlight: '#a4afb5',
-    text: '#edf1f3',
-    muted: '#9aa5ad',
-    line: 'rgba(128, 149, 165, 0.30)',
   }),
   preset('wukong', '悟空（WUKONG）', 'dark', {
     background: '#131313',
@@ -244,18 +347,6 @@ export const DREAM_SKIN_PRESETS: readonly DreamSkinPreset[] = Object.freeze([
     text: '#191b1f',
     muted: '#68696c',
     line: '#d2d3d4',
-  }),
-  preset('poster', '三上悠亚', 'light', {
-    background: '#f2e5d4',
-    panel: '#eed8e3',
-    panelAlt: '#eae9e8',
-    accent: '#b471c6',
-    accentAlt: '#ceb4a1',
-    secondary: '#704e35',
-    highlight: '#462f3a',
-    text: '#43382d',
-    muted: '#e8bfd1',
-    line: '#d4d3d3',
   }),
   preset('reze', '蕾塞', 'dark', {
     background: '#541d28',
@@ -317,18 +408,6 @@ export const DREAM_SKIN_PRESETS: readonly DreamSkinPreset[] = Object.freeze([
     muted: '#65676c',
     line: '#d2d3d5',
   }),
-  preset('quiet-orbit', '寂静星轨', 'dark', {
-    background: '#070d20',
-    panel: '#0d1630',
-    panelAlt: '#151f3c',
-    accent: '#758df5',
-    accentAlt: '#9b83e9',
-    secondary: '#55b6e8',
-    highlight: '#a7b8ff',
-    text: '#f0f3ff',
-    muted: '#98a5c6',
-    line: 'rgba(117, 141, 245, 0.28)',
-  }),
   preset('123456', '芙宁娜 小白袜', 'light', {
     background: '#f6f6f6',
     panel: '#fefefe',
@@ -388,18 +467,6 @@ export const DREAM_SKIN_PRESETS: readonly DreamSkinPreset[] = Object.freeze([
     text: '#3D3A33',
     muted: '#8A8477',
     line: '#E3DCD0',
-  }),
-  preset('46-morning-4k', '46 morning 4k', 'dark', {
-    background: '#131313',
-    panel: '#1d1d1d',
-    panelAlt: '#2a2a2a',
-    accent: '#a46151',
-    accentAlt: '#b17769',
-    secondary: '#52788b',
-    highlight: '#bb897d',
-    text: '#f0f0f0',
-    muted: '#939393',
-    line: '#3f3f3f',
   }),
   preset('cloud-ascent', '云上仙途', 'light', {
     background: '#f1f7f3',
@@ -485,18 +552,6 @@ export const DREAM_SKIN_PRESETS: readonly DreamSkinPreset[] = Object.freeze([
     muted: '#949293',
     line: '#403e3f',
   }),
-  preset('art', 'art', 'dark', {
-    background: '#121314',
-    panel: '#1c1d1f',
-    panelAlt: '#282a2d',
-    accent: '#1c75c3',
-    accentAlt: '#3c88cb',
-    secondary: '#ccb7a5',
-    highlight: '#5598d2',
-    text: '#eff0f1',
-    muted: '#929394',
-    line: '#3e3f40',
-  }),
   preset('redline-breakout', 'SPIDER-MAN', 'dark', {
     background: '#090808',
     panel: '#151112',
@@ -521,4 +576,58 @@ export const DREAM_SKIN_PRESETS: readonly DreamSkinPreset[] = Object.freeze([
     text: '#1d2b33',
     muted: '#6b7c85',
     line: 'rgba(61, 122, 153, 0.25)',
+  }),
+  // 深海女仆工坊：与 chrome 皮肤配套的调色板（海军蓝 + 金色）。
+  preset('maid-atelier', '深海女仆工坊', 'light', {
+    background: '#dce6f5',
+    panel: 'rgba(248, 250, 255, 0.72)',
+    panelAlt: 'rgba(235, 240, 250, 0.84)',
+    accent: '#526aa8',
+    accentAlt: '#8ea5da',
+    secondary: '#c5a468',
+    highlight: '#405a99',
+    text: '#172347',
+    muted: '#52618f',
+    line: 'rgba(71, 91, 145, 0.3)',
+  }),
+  // ── dsh-web-ui 皮肤主题（背景图壁纸） ──
+  // 蓝色幻想：鲸墨靛蓝白天，靛蓝夜。
+  preset('blue-fantasy', '蓝色幻想', 'light', {
+    background: '#e8ecf5',
+    panel: 'rgba(248, 250, 255, 0.78)',
+    panelAlt: 'rgba(236, 240, 250, 0.82)',
+    accent: '#647ebf',
+    accentAlt: '#7f96d2',
+    secondary: '#d9a94f',
+    highlight: '#4a5a99',
+    text: '#1d2539',
+    muted: '#5a688c',
+    line: 'rgba(100, 126, 191, 0.28)',
+  }),
+  // 夕港：黄昏海港，深紫蓝夜。
+  preset('harbor', '夕港', 'dark', {
+    background: '#141a2e',
+    panel: 'rgba(24, 31, 54, 0.72)',
+    panelAlt: 'rgba(29, 37, 64, 0.76)',
+    accent: '#ff9d5c',
+    accentAlt: '#ffb98a',
+    secondary: '#8ab4de',
+    highlight: '#e0844a',
+    text: '#fff5ec',
+    muted: '#b8bdd4',
+    line: 'rgba(255, 255, 255, 0.14)',
+  }),
+  // 鲸吟：冰蓝海面，藏青夜。
+  // 鲸语：深海母鲸，深海蓝夜。
+  preset('whale-mom', '鲸语', 'dark', {
+    background: '#0a1020',
+    panel: 'rgba(10, 15, 30, 0.72)',
+    panelAlt: 'rgba(12, 18, 36, 0.76)',
+    accent: '#53a4dd',
+    accentAlt: '#86c2ec',
+    secondary: '#57b57c',
+    highlight: '#3d8ac4',
+    text: '#eef2f8',
+    muted: '#6d84c0',
+    line: 'rgba(120, 192, 240, 0.16)',
   }),])

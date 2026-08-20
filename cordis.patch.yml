@@ -1,0 +1,5 @@
+# dsh-beautify bundle patch: 安装即启用外观主题 / 鲸鱼光标 / 余额小鲸鱼。
+# 由 DSH Hub 在发布时校验（entryListSchema：顶层 YAML 数组）。
+- insert:
+    - id: dsh-beautify
+      name: '@nlqh/dsh-beautify'
