@@ -294,8 +294,8 @@ function createLiquidGlassShader(canvas: HTMLCanvasElement, currentOpts: ShaderO
   let animId = 0
 
   const sceneCanvas = document.createElement('canvas')
-  sceneCanvas.width = 1920
-  sceneCanvas.height = 1080
+  sceneCanvas.width = 960
+  sceneCanvas.height = 540
   const sceneCtx = sceneCanvas.getContext('2d')
 
   const gl = (canvas.getContext('webgl') || canvas.getContext('experimental-webgl')) as WebGLRenderingContext | null
@@ -552,8 +552,11 @@ function createLiquidGlassShader(canvas: HTMLCanvasElement, currentOpts: ShaderO
 
   function resize() {
     const dpr = window.devicePixelRatio || 1
-    canvas.width = window.innerWidth * dpr
-    canvas.height = window.innerHeight * dpr
+    // 渲染半分辨率：WebGL 纹理 + sceneCanvas 都缩到 0.5x，CSS 拉伸回全屏 → 像素量 ~75% 减少。
+    // 屏幕看着是 4K 也只跑 720p 着色；轻微模糊符合毛玻璃语义。
+    const scale = 0.5
+    canvas.width = Math.max(1, Math.floor(window.innerWidth * dpr * scale))
+    canvas.height = Math.max(1, Math.floor(window.innerHeight * dpr * scale))
     gl!.viewport(0, 0, canvas.width, canvas.height)
   }
   window.addEventListener('resize', resize)
@@ -637,6 +640,11 @@ function createLiquidGlassShader(canvas: HTMLCanvasElement, currentOpts: ShaderO
   function frame(now: number) {
     if (disposed) return
     try {
+      // 限 30fps：低性能设备不会每帧跑 shader；视觉无感（24/30fps 足够液态动画）
+      if (now - lastFrameTime < 32) {
+        if (!disposed) animId = requestAnimationFrame(frame)
+        return
+      }
       const time = now * 0.001
       lastFrameTime = now
       lensScanFrameCounter++

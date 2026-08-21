@@ -176,6 +176,18 @@ export async function loadInventory() {
   selection.loading = false;
   selection.loaded = true;
 
+  // inventory 拉取失败（WE 后端没启动/网络断了/等）时不要清空已持久化的选择
+  // —— 否则用户重启页面或开关液态玻璃时，已选的壁纸会被丢掉，"WE 持久化"失效。
+  // 仅在**成功拿到清单且里面真的没有**时才清 selection.id。
+  if (selection.inventory.error) {
+    if (selection.id) {
+      // 保留原选择，UI 显示"后端未连接"提示即可；下次 init 成功时再校验。
+      applySelection(selection.id);
+    }
+    emit();
+    return;
+  }
+
   // Rotation groups: validate the active one and seed a first group from a
   // playable Wallpaper Engine playlist when the user has none yet (so the
   // rotation feature starts working out of the box, using ids the host already

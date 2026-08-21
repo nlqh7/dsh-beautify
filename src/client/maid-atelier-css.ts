@@ -3228,14 +3228,24 @@ body[data-dsh-maid-atelier] [class*='titlebar'] [class*='button']:hover {
   }
 }
 
-/* 非聊天视图（轨迹 Trajectory / 新会话等检视页）：女仆保留，但沉到
-   内容层后面当背景（stage 降到 z-index -1 + 半透明淡化）。女仆仍可见、
-   不遮挡对话框；聊天界面（data-maid-chat-active）保持原样。 */
+/* 非聊天视图（轨迹 Trajectory / 新会话等检视页）的女仆作为背景画存在
+   - 尺寸与聊天一致（64vh、靠边），不再用 96vh 全屏避免被裁切、也避免遮挡
+   - stage z-index 0（液态玻璃 ambient 同层；非液态玻璃环境 dsh 内容 auto 不建立层叠时 stage z-0 在普通流之上靠 z 控制） + opacity 0.5 淡灰
+   - 液态玻璃开启时把 stage 再提 1 层（确保在 ambient canvas 之上可见） */
+body[data-dsh-maid-atelier]:not([data-maid-chat-active]) [data-maid-character='left'] {
+  height: clamp(420px, 64vh, 760px) !important;
+}
+body[data-dsh-maid-atelier]:not([data-maid-chat-active]) [data-maid-character='right'] {
+  height: clamp(420px, 64vh, 760px) !important;
+}
 body[data-dsh-maid-atelier]:not([data-maid-chat-active]) [data-skin-chrome='character-stage'] {
-  z-index: -1;
+  z-index: 0;
 }
 body[data-dsh-maid-atelier]:not([data-maid-chat-active]) [data-maid-character] {
   opacity: 0.5;
   filter: grayscale(0.2) brightness(0.9);
+}
+[data-dsh-liquid-glass] body[data-dsh-maid-atelier]:not([data-maid-chat-active]) [data-skin-chrome='character-stage'] {
+  z-index: 1;
 }
 `;
