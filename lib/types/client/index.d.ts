@@ -11,10 +11,5 @@ import type { ClientContext } from '@deepseek-ai/dsh-client-runtime/client';
  * `sessions` must be injected explicitly — Cordis contexts are strict proxies
  * and reading an un-injected property throws, which would kill the plugin. */
 export declare const inject: string[];
-/**
- * Register every Dream Skin preset, restore persisted state, and mount the
- * 外观 switching section.
- * @param ctx - the browser plugin context.
- */
 export declare function apply(ctx: ClientContext): void;
 //# sourceMappingURL=index.d.ts.map

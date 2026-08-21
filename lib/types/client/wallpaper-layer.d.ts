@@ -110,7 +110,6 @@ export declare function readGlass(): {
 };
 /** Set one glass knob by kind: 'blur' | 'saturate' | 'highlight' | 'border'. */
 export declare function setGlass(kind: any, value: any): void;
-/** Push the glass knobs into body CSS variables and gate the glass rules. */
 export declare function applyGlass(): void;
 export declare function initWallpaperLayer(ctx: any): void;
 //# sourceMappingURL=wallpaper-layer.d.ts.map

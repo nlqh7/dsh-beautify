@@ -920,8 +920,13 @@ function WallpaperPicker() {
 
 // ── Styles ──────────────────────────────────────────────────────────────────
 const CSS = `
-  /* Wallpaper layer: a fixed child of <body>, sunk BELOW the app frame. */
-  .we-layer { position: fixed; inset: 0; z-index: -2; overflow: hidden; pointer-events: none; }
+  /* Wallpaper layer: a fixed child of <body>. It lives at z-index:0 (not
+     negative!) because Chromium refuses to paint <iframe> content that is
+     nested inside a negative z-index stacking context — web wallpapers went
+     black/transparent. The app UI is lifted above it via
+     body[data-we-wallpaper] #root { z-index:2 } below, and the scrim sits
+     between the two (z-index:1). */
+  .we-layer { position: fixed; inset: 0; z-index: 0; overflow: hidden; pointer-events: none; }
   /* Blurring via CSS filter darkens/thins the edges, so the layer is scaled up
      (--we-wallpaper-scale tracks blur) to hide the transparent fringe the blur
      would otherwise reveal at the viewport edges. */
@@ -933,13 +938,42 @@ const CSS = `
     transform-origin: center;
   }
 
-  /* Scrim: sits ABOVE the wallpaper (z-index -1 > -2, so it never depends on
-     DOM insertion order — the wallpaper element is re-appended on wallpaper
-     switch and could otherwise slide above the scrim). Below the UI. */
+  /* Scrim: sits ABOVE the wallpaper (z-index 1 > 0) and BELOW the app UI
+     (#root z-index 2). Explicit z-index so it never depends on DOM insertion
+     order — the wallpaper element is re-appended on wallpaper switch and
+     could otherwise slide above the scrim. */
   .we-scrim {
-    position: fixed; inset: 0; z-index: -1;
+    position: fixed; inset: 0; z-index: 1;
     pointer-events: none;
     background: var(--we-scrim-color, rgba(0, 0, 0, 0.25));
+  }
+
+  /* Lift the entire app frame above the wallpaper+scrim stack while a
+     wallpaper is active. #root is z-auto normally, so this only kicks in
+     under body[data-we-wallpaper]. The maid character stage, modals and the
+     whale widget are appended to <body> AFTER #root with their own z-index,
+     so they still paint above it (stage z=2, composer inputs z=100, dialogs
+     z≈50+). */
+  body[data-we-wallpaper] #root {
+    position: relative;
+    z-index: 2;
+  }
+
+  /* The app layout shell paints opaque gradient / colour backgrounds on its
+     frame, column and pane containers (several via the inline
+     --dsw-alias-bg-base custom property, which stylesheet overrides cannot
+     reach). While a wallpaper is active these must be see-through so the
+     wallpaper+scrim stack shows across the whole frame; frosted-glass
+     surfaces (composer card, message bubbles) keep their own translucent
+     backgrounds and are unaffected by these selectors. */
+  body[data-we-wallpaper] [data-pane],
+  body[data-we-wallpaper] [class*="sidebarCol"],
+  body[data-we-wallpaper] [class*="sidebarCol"] > div,
+  body[data-we-wallpaper] [class*="centerCol"],
+  body[data-we-wallpaper] [class*="detailsCol"],
+  body[data-we-wallpaper] [class*="_frame"],
+  body[data-we-wallpaper] [class*="_root"] {
+    background: transparent !important;
   }
 
   /* While a wallpaper is active: make the app frame AND sidebar transparent so

@@ -158,6 +158,7 @@ function readProject(dir) {
       type,
       file: o.file,
       preview,
+      dir,
     };
   } catch { return null; }
 }
@@ -310,7 +311,14 @@ export function registerWallpaperEngine(ctx) {
         title: w.title,
         type: w.type,
         playable: hasMedia,
-        media: hasMedia ? `${BASE}/media/${tokenFor(w.fileAbs)}` : null,
+        // Web wallpapers are served as a DIRECTORY (trailing slash) so the
+        // browser resolves relative assets (js/css/img next to index.html)
+        // against the same route; video/scene keep the exact file token.
+        media: hasMedia
+          ? w.type === 'web'
+            ? `${BASE}/media/${tokenFor(w.dir)}/`
+            : `${BASE}/media/${tokenFor(w.fileAbs)}`
+          : null,
         preview: hasPreview ? `${BASE}/preview/${tokenFor(w.previewAbs)}` : null,
       };
     });
@@ -392,6 +400,44 @@ export function registerWallpaperEngine(ctx) {
     createReadStream(absPath).pipe(res);
   }
 
+  // Resolve a media request to an absolute file path.
+  //  - exact token (video/scene/preview) → that file
+  //  - "<dirToken>/<rel>" (web wallpaper asset) → file inside that wallpaper
+  //    project directory, guarded against path traversal. An empty <rel>
+  //    (request "…/media/<dirToken>/") returns the project entry file, so the
+  //    browser treats the URL as a directory and resolves the wallpaper's
+  //    relative js/css/img assets against it.
+  function resolveMediaToken(token) {
+    let abs = mediaMap.get(token);
+    if (abs) return abs;
+    const slash = token.indexOf('/');
+    if (slash <= 0) return null;
+    const dirToken = token.slice(0, slash);
+    const rel = token.slice(slash + 1);
+    const dir = mediaMap.get(dirToken);
+    if (!dir || !existsSync(dir)) return null;
+    let st; try { st = statSync(dir); } catch { return null; }
+    if (!st.isDirectory()) return null;
+    let target;
+    if (!rel) {
+      let entry = 'index.html';
+      const pj = join(dir, 'project.json');
+      if (existsSync(pj)) {
+        try {
+          const o = JSON.parse(readFileSync(pj, 'utf8'));
+          if (o && typeof o.file === 'string' && o.file.trim()) entry = o.file;
+        } catch { /* keep default */ }
+      }
+      target = resolve(dir, entry);
+    } else {
+      target = resolve(dir, rel);
+    }
+    const base = normalize(resolve(dir));
+    const norm = normalize(target);
+    if (norm === base || norm.toLowerCase().startsWith(base.toLowerCase() + '\\')) return norm;
+    return null;
+  }
+
   for (const seg of ['media', 'preview']) {
     const prefix = `${BASE}/${seg}/`;
     disposers.push(webServer.register({
@@ -400,7 +446,7 @@ export function registerWallpaperEngine(ctx) {
       handler: (req, res) => {
         const pathname = new URL(req.url || '/', 'http://x').pathname;
         const token = decodeURIComponent(pathname.slice(prefix.length));
-        serveFile(mediaMap.get(token), req, res);
+        serveFile(resolveMediaToken(token), req, res);
       },
     }));
   }
