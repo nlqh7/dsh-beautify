@@ -21,15 +21,6 @@ const IMAGE_CANDIDATES = [
   'D:/TestBox/deepseek/skin/DSniang02.png',
 ]
 
-// Baby-whale icon: tightly-cropped avatar with transparent background so each
-// little whale renders as an independent individual (not a slice of the
-// large composition that the main whale uses).
-const BABY_IMAGE_CANDIDATES = [
-  path.join(PACKAGE_ROOT, 'assets', 'DSniang-baby.png'),
-  path.join(PACKAGE_ROOT, 'assets', 'DSniang1.png'),
-  'D:/TestBox/deepseek/DSniang-baby.png',
-]
-
 // Size memory file: prefer writable DSH home locations, then legacy fallbacks.
 const SIZE_FILE_CANDIDATES = [
   path.join(DSH_HOME, '.dshw-size.json'),
@@ -121,10 +112,6 @@ var FETCH_TIMEOUT_MS = 25000
 var BALANCE_URL = '/dsh-whale/balance.json'
 var SIZE_URL = '/dsh-whale/size.json'
 var IMG_URL = '/dsh-whale/image.png?v=2'
-// Independent baby-whale icon (cropped avatar) so each little whale renders
-// as a complete individual rather than a slice of the main composition.
-var BABY_URL = '/dsh-whale/baby.png?v=2'
-
 var css = [
   '.dshwv-root{position:fixed;right:0;bottom:0;--dshw-scale:1;--dshw-base:clamp(122px,calc(min(250px,min(100vw,100vh) * 0.28) * var(--dshw-scale)),625px);width:var(--dshw-base);height:var(--dshw-base);pointer-events:none;user-select:none;-webkit-user-select:none;z-index:9999;font-family:inherit;transition:left .16s ease,top .16s ease,transform .3s ease}',
   '.dshwv-root.dshwv-left{transform:scaleX(-1)}',
@@ -163,8 +150,7 @@ var css = [
   '.dshwv-sound{flex:1;border:1px solid rgba(32,49,112,.4);border-radius:6px;background:rgba(32,49,112,.08);color:#203170;font-size:12px;padding:3px 0;cursor:pointer}',
   '.dshwv-sound:hover{background:rgba(32,49,112,.16)}',
   '.dshwv-volpct{width:36px;text-align:right;color:#203170;font-size:12px}',
-  '.dshwv-babies{position:absolute;left:0;top:0;width:100%;height:100%;pointer-events:none;z-index:0;display:flex;flex-wrap:wrap;align-content:flex-end;align-items:flex-end;gap:12%;padding-left:1.5%;box-sizing:border-box}',
-  '.dshwv-baby{flex:none;width:calc(var(--dshw-base) * 0.13);height:calc(var(--dshw-base) * 0.13);display:block;pointer-events:none;-webkit-user-drag:none;user-select:none;opacity:0;transform:translateY(26%) scale(.5);transition:opacity .28s ease,transform .35s cubic-bezier(.34,1.56,.64,1);image-rendering:-webkit-optimize-contrast}',
+  '.dshwv-baby{position:fixed;display:block;pointer-events:none;-webkit-user-drag:none;user-select:none;opacity:0;transform:translateY(10%) scale(.82);transition:opacity .3s ease,transform .45s cubic-bezier(.34,1.56,.64,1);image-rendering:-webkit-optimize-contrast;z-index:9998}',
   '.dshwv-baby.dshwv-baby-in{opacity:1;transform:none}'
 ].join('\\n')
 
@@ -315,9 +301,6 @@ bubbleBox.addEventListener('click', function (e) {
 
 var body = document.createElement('div')
 body.className = 'dshwv-body'
-var babiesBox = document.createElement('div')
-babiesBox.className = 'dshwv-babies'
-body.appendChild(babiesBox)
 body.appendChild(img)
 body.appendChild(bubbleBox)
 root.appendChild(body)
@@ -540,6 +523,8 @@ function express() {
   root.style.left = state.left + 'px'
   root.style.top = state.top + 'px'
   root.classList.toggle('dshwv-left', state.h === 'left')
+  // 主鲸鱼移动/翻转时让子代理小鲸鱼跟着环绕重排
+  layoutBabies()
 }
 function settle() {
   var vp = viewport()
@@ -1085,22 +1070,45 @@ document.addEventListener('pointermove', function (e) {
 
 var babyWhales = new Map()
 var babySeq = 0
-// 个体化布局：flex 排列（babiesBox 自带 gap），数量越多 gap 收窄防止溢出，
-// 每只 13% 大小、默认 12% 间隔，视觉上明显分开成独立个体。
+// 每只子代理小鲸鱼 = 一份完整的独立小鲸鱼（同款大图），环绕主鲸鱼分散放置，
+// 各自 fixed 定位、互不重叠。主鲸鱼移动/缩放时由 express() 触发重排。
 function layoutBabies() {
-  var count = babyWhales.size
-  var gapPct = count <= 4 ? 12 : (count <= 6 ? 8 : 5)
-  try { babiesBox.style.gap = gapPct + '%' } catch (err) {}
+  var map = babyWhales
+  // var 提升：初始化早期（babyWhales 赋值前）express() 可能先调到这里
+  if (!map || map.size === 0) return
+  var list = Array.from(map.keys())
+  var count = list.length
+  var r = root.getBoundingClientRect()
+  if (!r || r.width <= 0) return
+  var vp = viewport()
+  var size = Math.round(clamp(r.width * 0.42, 84, 168))
+  var cx = r.left + r.width / 2
+  var cy = r.top + r.height / 2
+  var radius = r.width * 0.78
+  list.forEach(function (id, index) {
+    var el = babyWhales.get(id)
+    if (!el) return
+    el.style.width = size + 'px'
+    el.style.height = size + 'px'
+    // 单只：主鲸鱼正上方；多只：上方半圆均匀环绕（避开主鲸鱼本体）
+    var angle = count === 1
+      ? -Math.PI / 2
+      : -Math.PI / 2 + (index / (count - 1) - 0.5) * Math.PI * 0.92
+    var x = cx + Math.cos(angle) * radius - size / 2
+    var y = cy + Math.sin(angle) * radius - size / 2
+    el.style.left = Math.round(clamp(x, 6, Math.max(6, vp.w - size - 6))) + 'px'
+    el.style.top = Math.round(clamp(y, 6, Math.max(6, vp.h - size - 6))) + 'px'
+  })
 }
-// 一只小小鲸鱼入场（独立个体）；叫声由 syncBabyWhales 统一错开调度。
+// 一只子代理小鲸鱼入场：完整的独立小鲸鱼（不是小图标），直接挂到 body。
 function spawnBabyWhale(id) {
   if (babyWhales.has(id)) return
   var b = document.createElement('img')
   b.className = 'dshwv-baby'
-  b.src = BABY_URL
+  b.src = IMG_URL
   b.alt = ''
   b.draggable = false
-  babiesBox.appendChild(b)
+  document.body.appendChild(b)
   babyWhales.set(id, b)
   layoutBabies()
   requestAnimationFrame(function () {
@@ -1170,7 +1178,6 @@ const inject = ['webServer', 'credentials']
 
 function apply(ctx) {
     let imageBytes = null
-    let babyImageBytes = null
     let balanceCache = null
     let balanceInFlight = null
 
@@ -1186,22 +1193,6 @@ function apply(ctx) {
         } catch (err) {}
       }
       throw new Error('whale image not found')
-    }
-
-    function loadBabyImage() {
-      if (babyImageBytes) return babyImageBytes
-      for (const p of BABY_IMAGE_CANDIDATES) {
-        try {
-          const bytes = fs.readFileSync(p)
-          if (bytes && bytes.length > 0) {
-            babyImageBytes = bytes
-            return bytes
-          }
-        } catch (err) {}
-      }
-      // Last resort: reuse the main whale image if the dedicated baby icon
-      // is unavailable (still better than a broken baby).
-      return loadImage()
     }
 
     async function fetchBalance() {
@@ -1517,25 +1508,6 @@ function apply(ctx) {
         } catch (err) {
           res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' })
           res.end('whale image unavailable: ' + String((err && err.message) || err))
-        }
-      },
-    }))
-
-    disposers.push(ctx.webServer.register({
-      kind: 'exact',
-      path: '/dsh-whale/baby.png',
-      handler: (req, res) => {
-        try {
-          const bytes = loadBabyImage()
-          res.writeHead(200, {
-            'Content-Type': 'image/png',
-            'Cache-Control': 'no-store',
-            'Content-Length': String(bytes.length),
-          })
-          res.end(bytes)
-        } catch (err) {
-          res.writeHead(404, { 'Content-Type': 'text/plain; charset=utf-8' })
-          res.end('baby image unavailable: ' + String((err && err.message) || err))
         }
       },
     }))
