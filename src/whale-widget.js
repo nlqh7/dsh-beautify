@@ -953,14 +953,14 @@ function setWidgetCursor(v) {
 function onDocPointerMoveCursor(e) {
   if (drag && drag.active) { setWidgetCursor('grabbing'); return }
   if (babyDrag && babyDrag.active) { setWidgetCursor('grabbing'); return }
-  var el = null
-  try { el = document.elementFromPoint(e.clientX, e.clientY) } catch (err) {}
-  if (el && el.closest && el.closest('.dshwv-baby')) {
+  if (isBabyHit(e)) {
     // 摸到子代理小鲸鱼：系统手型（摸头标记由独立监听负责）
     setWidgetCursor('grab')
     menuBtn.classList.remove('dshwv-menu-btn-visible')
     return
   }
+  var el = null
+  try { el = document.elementFromPoint(e.clientX, e.clientY) } catch (err) {}
   if (el && el.closest && (el.closest('.dshwv-bubble') || el.closest('.dshwv-menu') || el.closest('.dshwv-menu-btn'))) {
     setWidgetCursor('')
     menuBtn.classList.add('dshwv-menu-btn-visible')
@@ -1066,15 +1066,21 @@ setInterval(function () { refresh(false) }, REFRESH_MS)
 // 鲸鱼光标据此把当前状态切为「链接手型」（摸头 = 手）。像素检测只在小鲸鱼
 // 矩形范围内触发，平时只做矩形快速排除。
 var lastWhaleHit = false
-// 指针是否在某只子代理小鲸鱼上（pointer-events:auto 后可被 elementFromPoint 命中）。
+// 指针是否在某只子代理小鲸鱼的矩形内（独立个体，直接用坐标判断，
+// 不依赖 elementFromPoint——元素命中受 z-index/透明区域影响，rect 更稳）。
 function isBabyHit(e) {
-  try {
-    var el = document.elementFromPoint(e.clientX, e.clientY)
-    if (!el || typeof el.closest !== 'function') return false
-    return el.closest('.dshwv-baby') !== null
-  } catch (err) {
-    return false
-  }
+  var found = false
+  if (!babyWhales) return false
+  babyWhales.forEach(function (el) {
+    if (found || !el) return
+    try {
+      var r = el.getBoundingClientRect()
+      if (r && r.width > 0 && r.height > 0 &&
+        e.clientX >= r.left && e.clientX <= r.right &&
+        e.clientY >= r.top && e.clientY <= r.bottom) found = true
+    } catch (err) {}
+  })
+  return found
 }
 document.addEventListener('pointermove', function (e) {
   var hit = isWhaleHit(e) || isBabyHit(e)
@@ -1088,10 +1094,11 @@ document.addEventListener('pointermove', function (e) {
 
 var babyWhales = new Map()
 var babySeq = 0
-// 被用户手动拖动过的子代理小鲸鱼：保持手动位置，不再参与自动环绕。
+// 被用户手动拖动过的子代理小鲸鱼：保持手动位置，不再参与自动排列。
 var babyManual = new Set()
-// 每只子代理小鲸鱼 = 一份完整的独立小鲸鱼（同款大图），环绕主鲸鱼分散放置，
-// 各自 fixed 定位、互不重叠。主鲸鱼移动/缩放时由 express() 触发重排。
+// 每只子代理小鲸鱼 = 一份完整的独立小鲸鱼（同款大图），初始排在主鲸鱼
+// 左侧（从底部往上），各自 fixed 定位、互不重叠。主鲸鱼移动/缩放时由
+// express() 触发重排；手动拖走的保持用户位置。
 function layoutBabies() {
   var map = babyWhales
   // var 提升：初始化早期（babyWhales 赋值前）express() 可能先调到这里
@@ -1102,9 +1109,12 @@ function layoutBabies() {
   if (!r || r.width <= 0) return
   var vp = viewport()
   var size = Math.round(clamp(r.width * 0.42, 84, 168))
-  var cx = r.left + r.width / 2
-  var cy = r.top + r.height / 2
-  var radius = r.width * 0.78
+  // 初始位置：主鲸鱼左侧，从底部往上依次排开
+  var gap = 10
+  var left = r.left - size - gap
+  // 左侧空间不足（主鲸鱼贴近屏幕左缘）时改放右侧
+  if (left < 6 && r.right + size + gap <= vp.w - 6) left = r.right + gap
+  left = clamp(left, 6, Math.max(6, vp.w - size - 6))
   var autoIndex = 0
   list.forEach(function (id) {
     var el = babyWhales.get(id)
@@ -1113,13 +1123,8 @@ function layoutBabies() {
     if (babyManual.has(id)) return
     el.style.width = size + 'px'
     el.style.height = size + 'px'
-    // 单只：主鲸鱼正上方；多只：上方半圆均匀环绕（避开主鲸鱼本体）
-    var angle = count === 1
-      ? -Math.PI / 2
-      : -Math.PI / 2 + (autoIndex / (count - 1) - 0.5) * Math.PI * 0.92
-    var x = cx + Math.cos(angle) * radius - size / 2
-    var y = cy + Math.sin(angle) * radius - size / 2
-    el.style.left = Math.round(clamp(x, 6, Math.max(6, vp.w - size - 6))) + 'px'
+    var y = r.bottom - (autoIndex + 1) * (size + gap)
+    el.style.left = Math.round(left) + 'px'
     el.style.top = Math.round(clamp(y, 6, Math.max(6, vp.h - size - 6))) + 'px'
     autoIndex += 1
   })
@@ -1183,7 +1188,9 @@ function onBabyPointerDown(e) {
   var id = null
   babyWhales.forEach(function (b, bid) { if (b === el) id = bid })
   if (id === null) return
-  try { e.preventDefault(); e.stopPropagation() } catch (err) {}
+  // 只阻止默认行为，不阻止冒泡：让鲸鱼光标控制器也能收到 pointerdown，
+  // 从而切到 drag 状态并让出原生光标（否则拖动时皮肤盖住抓取手）。
+  try { e.preventDefault() } catch (err) {}
   babyDrag = {
     id: id, active: true,
     startX: e.clientX, startY: e.clientY,
