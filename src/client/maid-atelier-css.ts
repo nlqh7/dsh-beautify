@@ -3227,4 +3227,11 @@ body[data-dsh-maid-atelier] [class*='titlebar'] [class*='button']:hover {
     transition: none;
   }
 }
+
+/* 非聊天视图（轨迹 Trajectory / 新会话等检视页）不显示女仆角色：
+   角色在这些页面会放大到接近全屏并遮挡内容，直接隐藏（display 切换
+   无动画，立即生效）。聊天界面（data-maid-chat-active）保持原样。 */
+body[data-dsh-maid-atelier]:not([data-maid-chat-active]) [data-maid-character] {
+  display: none;
+}
 `;
