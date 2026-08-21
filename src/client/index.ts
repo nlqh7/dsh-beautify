@@ -362,13 +362,22 @@ function applySkin(themeId: string, scrimStrength: number, custom?: CustomThemeI
     }
   }
   const skin = themeId === 'custom'
-    ? customSkin(custom)
+    ? (() => {
+      // custom 主题无明暗信息：清掉标记，回退宿主偏好判断
+      document.body.removeAttribute('data-dsh-skin-mode')
+      return customSkin(custom)
+    })()
     : (() => {
       const preset = DREAM_SKIN_PRESETS.find((p) => p.id === themeId)
       if (preset === undefined) return undefined
+      // 发布主题明暗：设置页背景（settings-perf）据此适配暗/亮，
+      // 不依赖宿主偏好 data-ds-dark-theme（宿主亮色 + 暗色主题时会误判）。
+      document.body.setAttribute('data-dsh-skin-mode', preset.definition.colorScheme)
       return { palette: preset.palette, wallpaper: preset.wallpaper }
     })()
   if (skin === undefined) {
+    // custom 主题无明暗信息：清掉标记，回退宿主偏好判断
+    if (themeId !== 'custom') document.body.removeAttribute('data-dsh-skin-mode')
     clear()
     removeThemeWallpaperLayer()
     applyGlass()

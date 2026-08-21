@@ -40,8 +40,12 @@ const SETTINGS_PERF_CSS = `
    transparent) so the palace shows through the app shell. The settings panel
    paints with --dsw-alias-bg-layer-2 (rgba 0.84-0.92), so without the glass
    the modal content reads straight through. Restore opaque surfaces on the
-   dialog while it is open (theme-aware). */
-[data-dsh-settings-perf] body:has([role="dialog"][aria-modal="true"])[data-ds-dark-theme] [role="dialog"][aria-modal="true"] {
+   dialog while it is open. Dark detection uses the theme's own mode marker
+   (data-dsh-skin-mode, set by the beautify skin) first, then falls back to
+   the host preference — a dark beautify theme with a light host must still
+   get a dark settings panel. */
+[data-dsh-settings-perf] body:has([role="dialog"][aria-modal="true"])[data-dsh-skin-mode="dark"] [role="dialog"][aria-modal="true"],
+[data-dsh-settings-perf] body:has([role="dialog"][aria-modal="true"])[data-ds-dark-theme]:not([data-dsh-skin-mode="light"]) [role="dialog"][aria-modal="true"] {
   --dsw-alias-bg-base: #10172b !important;
   --dsw-alias-bg-layer-2: #10172b !important;
 }
