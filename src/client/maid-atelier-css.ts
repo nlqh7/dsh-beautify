@@ -3228,10 +3228,14 @@ body[data-dsh-maid-atelier] [class*='titlebar'] [class*='button']:hover {
   }
 }
 
-/* 非聊天视图（轨迹 Trajectory / 新会话等检视页）不显示女仆角色：
-   角色在这些页面会放大到接近全屏并遮挡内容，直接隐藏（display 切换
-   无动画，立即生效）。聊天界面（data-maid-chat-active）保持原样。 */
+/* 非聊天视图（轨迹 Trajectory / 新会话等检视页）：女仆保留，但沉到
+   内容层后面当背景（stage 降到 z-index -1 + 半透明淡化）。女仆仍可见、
+   不遮挡对话框；聊天界面（data-maid-chat-active）保持原样。 */
+body[data-dsh-maid-atelier]:not([data-maid-chat-active]) [data-skin-chrome='character-stage'] {
+  z-index: -1;
+}
 body[data-dsh-maid-atelier]:not([data-maid-chat-active]) [data-maid-character] {
-  display: none;
+  opacity: 0.5;
+  filter: grayscale(0.2) brightness(0.9);
 }
 `;
