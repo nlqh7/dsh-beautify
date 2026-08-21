@@ -2,7 +2,7 @@
 
 > DSH 社区插件 · 一站式美化包：鲸鱼光标 / 子代理小鲸鱼 / 29 套主题 / 自定义皮肤 / 声音与设置
 
-[![npm version](https://img.shields.io/badge/version-0.2.1-blue)](#) [![bundle](https://img.shields.io/badge/bundle-3.6MB-success)](#) [![license](https://img.shields.io/badge/license-CC--BY--NC--SA--4.0-orange)](#license)
+[![npm version](https://img.shields.io/badge/version-0.2.1-blue)](#) [![bundle](https://img.shields.io/badge/bundle-4.6MB-success)](#) [![license](https://img.shields.io/badge/license-CC--BY--NC--SA--4.0-orange)](#license)
 
 每个子代理都是一只**独立、完整、可互动**的小鲸鱼，分布在主鲸鱼周围；主鲸鱼本身可拖动、点击回弹、换皮；29 套主题、10 态光标，所有声音可独立控制。
 
@@ -43,8 +43,12 @@
 悟空 / 晨雾山水 / 夕港 / 橘子洲头 / 人民的 AI / 芙宁娜 / Reze / Firefly / DeepSeek / miku / 女仆系列 / 云鲸纸面 / 大肥鱼 / claude-eva / dream-* ……
 
 - 内置 + 暗/亮双套
-- WE（Wallpaper Engine）桥接：装本机 WE 后，**用各自电脑的 WE 壁纸，不占包体积**
+- **WE（Wallpaper Engine）桥接**：装本机 WE 后，用各自电脑的 WE 壁纸，不占包体积。扫描本机 79+ 张壁纸（web / 视频），设置 → 外观 → 壁纸引擎一键切换；壁纸层自动穿透主题背景（含女仆皮肤），配暗化 / 模糊 / 边框 / 玻璃 4 个滑块微调
 - 自定义主题：可上传壁纸+调 7 个参数
+
+![WE 壁纸生效：壁纸穿透主题背景显示](docs/screenshots/05-we-wallpaper.png)
+
+![WE 壁纸选择器：扫描本机 Wallpaper Engine 壁纸](docs/screenshots/06-we-picker.png)
 
 ### 🦢 深海女仆工坊（默认主题 · vendored）
 
@@ -52,8 +56,8 @@
 
 海军蓝 + 金色调色板，水墨山水背景 + 候鸟女仆角色，提供暗色 / 亮色两套皮肤。
 
-- 聊天界面女仆**缩小靠边**（64vh），不挡内容
-- **轨迹 / 新会话**等非聊天视图自动隐藏女仆（避免遮挡）
+- 聊天界面女仆**大尺寸清晰显示**（96vh），输入区/操作按钮始终浮在女仆之上不挡操作
+- **轨迹 / 新会话**等非聊天视图女仆固定在背景层（z=2），让位给弹窗与输入区
 
 ### 🔊 声音系统
 
@@ -80,6 +84,8 @@
 | `04-five-babies.png` | 5 只子代理 + 主鲸鱼被拖到左侧 + 碰撞推开效果 |
 | `02-after-collision.png` | 拖一只到另一只身上 → 自动弹开不重叠 |
 | `03-pet-cursor.png` | 摸头时系统手型（grab） |
+| `05-we-wallpaper.png` | WE 壁纸生效：壁纸穿透主题（含女仆）背景全屏显示 |
+| `06-we-picker.png` | WE 壁纸选择器：扫描本机 Wallpaper Engine 壁纸缩略图网格 |
 
 ---
 
