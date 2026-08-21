@@ -153,6 +153,10 @@ var css = [
   '.dshwv-baby{position:fixed;display:block;pointer-events:auto;cursor:grab;-webkit-user-drag:none;user-select:none;opacity:0;transform:scale(.82);transition:opacity .3s ease,transform .45s cubic-bezier(.34,1.56,.64,1);image-rendering:-webkit-optimize-contrast;z-index:9998}',
   '.dshwv-baby.dshwv-baby-in{opacity:1;transform:scale(1)}',
   '.dshwv-baby.dshwv-baby-dragging{cursor:grabbing;transition:none}',
+  // 小鲸鱼自己报数的小气泡（弹跳入场 + 淡出）
+  '.dshwv-baby-speech{position:fixed;z-index:10001;background:#fff;color:#203170;padding:5px 12px;border-radius:14px;font-size:13px;font-weight:600;line-height:1.2;box-shadow:0 4px 12px rgba(0,0,0,.18);pointer-events:none;transform:translateY(6px) scale(.82);opacity:0;transition:opacity .2s ease,transform .32s cubic-bezier(.34,1.56,.64,1);white-space:nowrap}',
+  '.dshwv-baby-speech.dshwv-baby-speech-in{opacity:1;transform:translateY(0) scale(1)}',
+  '.dshwv-baby-speech.dshwv-baby-speech-out{opacity:0;transform:translateY(-4px) scale(.94)}',
   // 点击回弹（q 弹）：主鲸鱼和子代理小鲸鱼共用，按下瞬间弹一下。
   '@keyframes dshwv-pet{0%{transform:scale(1)}35%{transform:scale(1.1,.9)}55%{transform:scale(.94,1.06)}75%{transform:scale(1.04,.97)}100%{transform:scale(1)}}',
   '.dshwv-img.dshwv-petting{animation:dshwv-pet .45s cubic-bezier(.34,1.56,.64,1)}',
@@ -1116,32 +1120,53 @@ var babyWhales = new Map()
 var babySeq = 0
 // 被用户手动拖动过的子代理小鲸鱼：保持手动位置，不再参与自动排列。
 var babyManual = new Set()
-// 碰撞箱 = 图片大小的矩形；挤压时沿最小穿透方向推开（物理分离），
-// 而不是卡住不能动。障碍 = 主鲸鱼 + 其他小鲸鱼（忽略自身 ignoreId）。
+// 碰撞箱 = 角色实体区域（图片 alpha bbox 被阴影/装饰像素干扰太大，
+// 不靠谱）。DSniang1.png 实际角色集中在上/中部、下半角大片透明，因此
+// 碰撞箱按图片矩形整体缩小到居中区域：左右各裁 5%、下裁 35%（去掉
+// 衣领下方的透明区）。应用到主鲸鱼 + 所有小鲸鱼（同一张图）。
+// 返回 { l, t, r, b }。
+function collideBox(l, t, w, h) {
+  var cutL = 0.05, cutR = 0.05, cutT = 0.00, cutB = 0.35
+  return {
+    l: l + w * cutL,
+    t: t + h * cutT,
+    r: l + w * (1 - cutR),
+    b: t + h * (1 - cutB),
+  }
+}
+// 碰撞箱 = 角色实体区域（collideBox），挤压时沿最小穿透方向推开
+// （物理分离），不是卡住不能动。障碍 = 主鲸鱼 + 其他小鲸鱼（忽略自身）。
 // 每次迭代处理一个重叠，最多 8 轮，最后钳制在屏幕内。
 function pushOut(l, t, w, h, ignoreId) {
   try {
     var obstacles = []
     var rr = root.getBoundingClientRect()
     if (rr && rr.width > 0 && rr.height > 0) {
-      obstacles.push({ l: rr.left, t: rr.top, r: rr.right, b: rr.bottom })
+      var mb = collideBox(rr.left, rr.top, rr.width, rr.height)
+      obstacles.push({ l: mb.l, t: mb.t, r: mb.r, b: mb.b })
     }
     babyWhales.forEach(function (b, id) {
       if (id === ignoreId || !b) return
       try {
         var r = b.getBoundingClientRect()
         if (r && r.width > 0 && r.height > 0) {
-          obstacles.push({ l: r.left, t: r.top, r: r.right, b: r.bottom })
+          var bb = collideBox(r.left, r.top, r.width, r.height)
+          obstacles.push({ l: bb.l, t: bb.t, r: bb.r, b: bb.b })
         }
       } catch (err) {}
     })
+    // 被推对象也用碰撞箱（而非图片整矩形）
+    var mine = collideBox(l, t, w, h)
+    l = mine.l; t = mine.t
+    var mw = mine.r - mine.l
+    var mh = mine.b - mine.t
     var pad = 4
     var vp = viewport()
     for (var pass = 0; pass < 8; pass++) {
       var o = null
       for (var i = 0; i < obstacles.length; i++) {
         var ob = obstacles[i]
-        if (l < ob.r - pad && l + w > ob.l + pad && t < ob.b - pad && t + h > ob.t + pad) {
+        if (l < ob.r - pad && l + mw > ob.l + pad && t < ob.b - pad && t + mh > ob.t + pad) {
           o = ob
           break
         }
@@ -1150,9 +1175,9 @@ function pushOut(l, t, w, h, ignoreId) {
       // 沿最小穿透方向推出（推开而非卡死）。按距离排序后逐个尝试，
       // 取第一个 clamp 到屏幕内后仍能实际移动的方向——最近的墙若被
       // 屏幕边界挡住（如主鲸鱼贴边），就滑到次近方向，保证必然分离。
-      var dLeft = l + w - o.l + pad
+      var dLeft = l + mw - o.l + pad
       var dRight = o.r - l + pad
-      var dUp = t + h - o.t + pad
+      var dUp = t + mh - o.t + pad
       var dDown = o.b - t + pad
       var options = [
         { dl: -dLeft, dt: 0, d: dLeft },
@@ -1162,6 +1187,8 @@ function pushOut(l, t, w, h, ignoreId) {
       ].sort(function (a, b) { return a.d - b.d })
       var applied = false
       for (var k = 0; k < options.length; k++) {
+        // 按图片矩形尺寸 clamp（mw/mh 是碰撞箱，不是图片 w/h ——推出距离
+        // 是相对碰撞箱的，但 clamp 应基于图片矩形防止推出后图片出屏）
         var nl = clamp(l + options[k].dl, 0, Math.max(0, vp.w - w))
         var nt = clamp(t + options[k].dt, 0, Math.max(0, vp.h - h))
         if (nl !== l || nt !== t) {
@@ -1235,11 +1262,38 @@ function spawnBabyWhale(id) {
   document.body.appendChild(b)
   babyWhales.set(id, b)
   layoutBabies()
+  // 每只小鲸鱼自己报到：头顶冒小气泡（独立个体自己报数）
+  showBabySpeech(b, '报到！')
   requestAnimationFrame(function () {
     requestAnimationFrame(function () {
       b.classList.add('dshwv-baby-in')
     })
   })
+}
+// 小鲸鱼头顶小气泡：弹出 → 停留 → 淡出移除。位置跟随小鲸鱼顶部中心。
+function showBabySpeech(babyEl, text) {
+  try {
+    var b = document.createElement('div')
+    b.className = 'dshwv-baby-speech'
+    b.textContent = text
+    document.body.appendChild(b)
+    function place() {
+      try {
+        var r = babyEl.getBoundingClientRect()
+        var bw = b.offsetWidth
+        var bh = b.offsetHeight
+        b.style.left = Math.round(r.left + r.width / 2 - bw / 2) + 'px'
+        b.style.top = Math.round(r.top - bh - 6) + 'px'
+      } catch (err) {}
+    }
+    place()
+    setTimeout(place, 40)
+    requestAnimationFrame(function () { b.classList.add('dshwv-baby-speech-in') })
+    setTimeout(function () { b.classList.add('dshwv-baby-speech-out') }, 1100)
+    setTimeout(function () {
+      try { b.remove() } catch (err) {}
+    }, 1500)
+  } catch (err) {}
 }
 // 一只小小鲸鱼退场（对应的子代理会话结束），随后重排剩余个体。
 function removeBabyWhale(id) {
@@ -1378,18 +1432,8 @@ window.addEventListener('dshw:subagents', function (e) {
     var prevCount = lastBabyCount
     lastBabyCount = ids.length
     syncBabyWhales(ids)
-    if (ids.length > prevCount && ids.length > 0) {
-      // 报数：气泡显示数量
-      hideBubble()
-      showBubble()
-      swapBubbleContent(function () {
-        applyBubbleLines([
-          { t: '子代理', s: 'A', c: '' },
-          { t: String(ids.length), s: 'B', c: '' },
-          { t: '只小小鲸鱼报到', s: 'C', c: '' }
-        ])
-      })
-    }
+    // 报数改由每只小鲸鱼自己冒泡（spawnBabyWhale → showBabySpeech），
+    // 不再让主鲸鱼的气泡统一播报
   } catch (err) {}
 })})()`
 
