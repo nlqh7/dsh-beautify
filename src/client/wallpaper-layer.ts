@@ -533,7 +533,7 @@ function syncLayers() {
 // shared glass store and apply to every theme, not just WE wallpapers. The WE
 // per-selection store keeps only wallpaper-scoped knobs (scrim, wallpaperBlur).
 const GLASS_KEY = "dsh-beautify:glass";
-const GLASS_DEFAULTS = { blur: 24, saturate: 1.8, highlight: 0.3, border: 0.35 };
+const GLASS_DEFAULTS = { blur: 0, saturate: 1.8, highlight: 0.3, border: 0.35 }; // 默认关闭毛玻璃（避免开机整片白雾）
 
 /** Read the global glass knobs; malformed or missing data yields the defaults. */
 export function readGlass() {
@@ -581,8 +581,7 @@ function ensureGlassStyle() {
     "body[data-ds-glass] [data-composer-card],",
     "body[data-ds-glass] [data-input-mirror],",
     "body[data-ds-glass] [class*='composerSeat'],",
-    "body[data-ds-glass] [class*='MessageRow'] [class*='card'],",
-    "body[data-ds-glass] [role='dialog'][aria-modal='true']",
+    "body[data-ds-glass] [class*='MessageRow'] [class*='card']",
     "{",
     "  backdrop-filter: blur(var(--we-blur, 24px)) saturate(var(--we-saturate, 1.8)) !important;",
     "  -webkit-backdrop-filter: blur(var(--we-blur, 24px)) saturate(var(--we-saturate, 1.8)) !important;",
@@ -1170,6 +1169,22 @@ export function initWallpaperLayer(ctx) {
       syncLayers();
       applyEffects();
       applyGlass(); // 初始化玻璃参数与规则，滑块默认值一加载即生效
+      // 「先关了」玻璃：上次滑块默认 blur=24，开机就给整片白雾；本次默认 0，
+      // 一次性把残留的高 blur 值强制归零并打标记，避免覆盖用户主动调过的偏好。
+      try {
+        if (localStorage.getItem('dsh-beautify:glassQuarantined') !== '1') {
+          const raw = localStorage.getItem(GLASS_KEY)
+          if (raw !== null) {
+            try {
+              const parsed = JSON.parse(raw)
+              if (parsed && typeof parsed === 'object' && (parsed.blur === undefined || parsed.blur > 0)) {
+                localStorage.setItem(GLASS_KEY, JSON.stringify({ ...parsed, blur: 0 }))
+              }
+            } catch {}
+          }
+          localStorage.setItem('dsh-beautify:glassQuarantined', '1')
+        }
+      } catch {}
       return () => {
         unsub();
         unsubEffects();

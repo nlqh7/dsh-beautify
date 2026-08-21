@@ -3228,10 +3228,10 @@ body[data-dsh-maid-atelier] [class*='titlebar'] [class*='button']:hover {
   }
 }
 
-/* 非聊天视图（新会话 / 新绘画 / 轨迹等检视页）：恢复上游 maid-atelier 原样——
-   女仆大尺寸（96vh）、清晰、靠边显示，与原作者一致。stage 上游 z-index 3 天然
-   高于液态玻璃 ambient(z-0)，无需额外层级处理。 */
+/* 非聊天视图（新会话 / 新绘画 / 轨迹等）：女仆 z-index 2 —— 高于 dsh 普通内容
+   (z-auto) 可见、低于 dsh 弹窗 portal (z≥50) 不挡弹窗；chat-active 时上游规则仍给
+   z-3（在内容前靠边显示）。pointer-events:none 已由上游设置，鼠标穿透不挡操作。 */
 body[data-dsh-maid-atelier]:not([data-maid-chat-active]) [data-skin-chrome='character-stage'] {
-  z-index: 3;
+  z-index: 2;
 }
 `;
