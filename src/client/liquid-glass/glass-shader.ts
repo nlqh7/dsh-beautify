@@ -294,8 +294,8 @@ function createLiquidGlassShader(canvas: HTMLCanvasElement, currentOpts: ShaderO
   let animId = 0
 
   const sceneCanvas = document.createElement('canvas')
-  sceneCanvas.width = 960
-  sceneCanvas.height = 540
+  sceneCanvas.width = 640
+  sceneCanvas.height = 360
   const sceneCtx = sceneCanvas.getContext('2d')
 
   const gl = (canvas.getContext('webgl') || canvas.getContext('experimental-webgl')) as WebGLRenderingContext | null
@@ -553,8 +553,10 @@ function createLiquidGlassShader(canvas: HTMLCanvasElement, currentOpts: ShaderO
   function resize() {
     const dpr = window.devicePixelRatio || 1
     // 渲染半分辨率：WebGL 纹理 + sceneCanvas 都缩到 0.5x，CSS 拉伸回全屏 → 像素量 ~75% 减少。
-    // 屏幕看着是 4K 也只跑 720p 着色；轻微模糊符合毛玻璃语义。
-    const scale = 0.5
+    // 同时限制最大边 1080：4K 屏（dpr 2）时 0.5x 仍有 1920px，进一步压到 1080 上限，
+    // 保证低配/集显设备不会因为超大纹理直接卡死浏览器。
+    const maxSide = 1080
+    const scale = Math.min(0.5, maxSide / Math.max(window.innerWidth, window.innerHeight))
     canvas.width = Math.max(1, Math.floor(window.innerWidth * dpr * scale))
     canvas.height = Math.max(1, Math.floor(window.innerHeight * dpr * scale))
     gl!.viewport(0, 0, canvas.width, canvas.height)
@@ -637,13 +639,37 @@ function createLiquidGlassShader(canvas: HTMLCanvasElement, currentOpts: ShaderO
   let cachedPopoverElements: HTMLElement[] = []
   void cachedPopoverElements
 
+  // 自动性能降级：统计真实帧间隔滑动窗口；若持续低帧率（说明 GPU 撑不住），
+  // 自动关闭每帧最贵的背景噪声水波分支并降低分辨率，避免浏览器卡崩。
+  // 光标美化（follower img + cursor:none）开销极小且是 transform 合成层，
+  // 不是卡顿来源——真正的大头是这里的全屏 WebGL + backdrop-filter。
+  let slowFrameStreak = 0
+  let degraded = false
+
   function frame(now: number) {
     if (disposed) return
     try {
       // 限 30fps：低性能设备不会每帧跑 shader；视觉无感（24/30fps 足够液态动画）
-      if (now - lastFrameTime < 32) {
+      const frameGap = now - lastFrameTime
+      if (frameGap < 32) {
         if (!disposed) animId = requestAnimationFrame(frame)
         return
+      }
+      // 帧率守护：连续 40 帧间隔 > 50ms（约 <20fps）→ 自动降级
+      if (frameGap > 50) {
+        slowFrameStreak++
+        if (slowFrameStreak > 40 && !degraded) {
+          degraded = true
+          opts.bgLiquidEnabled = false
+          // 分辨率再砍一档（canvas 尺寸修改后 viewport 同步）
+          const dpr = window.devicePixelRatio || 1
+          const scale = Math.min(0.3, 720 / Math.max(window.innerWidth, window.innerHeight))
+          canvas.width = Math.max(1, Math.floor(window.innerWidth * dpr * scale))
+          canvas.height = Math.max(1, Math.floor(window.innerHeight * dpr * scale))
+          gl!.viewport(0, 0, canvas.width, canvas.height)
+        }
+      } else {
+        slowFrameStreak = Math.max(0, slowFrameStreak - 2)
       }
       const time = now * 0.001
       lastFrameTime = now
