@@ -518,6 +518,9 @@ function applySkin(themeId: string, scrimStrength: number, custom?: CustomThemeI
 // WebGL 透镜/毛玻璃渲染层，关闭时停用；不依赖桌面端后端 API（缺失即用默认）。
 const LIQUID_GLASS_STORAGE_KEY = 'dsh-beautify:liquidGlass'
 const LIQUID_GLASS_TOGGLE_EVENT = 'dsh:liquid-glass-toggle'
+// 「先关了」标记：液态玻璃全屏 WebGL + 毛玻璃对低配/集显开销过大（曾卡死浏览器），
+// 本版本一次性强制关闭并清除开启残留（只生效一次），之后完全尊重用户显式设置。
+const LIQUID_GLASS_QUARANTINE_KEY = 'dsh-beautify:liquidGlassQuarantined'
 function initLiquidGlass(ctx: ClientContext): () => void {
   let layer: LiquidGlassLayer | null = null
   const applyToggle = (on: boolean): void => {
@@ -530,6 +533,12 @@ function initLiquidGlass(ctx: ClientContext): () => void {
       }
     } catch (err) { /* never break the host */ }
   }
+  try {
+    if (localStorage.getItem(LIQUID_GLASS_QUARANTINE_KEY) !== '1') {
+      localStorage.setItem(LIQUID_GLASS_STORAGE_KEY, '0')
+      localStorage.setItem(LIQUID_GLASS_QUARANTINE_KEY, '1')
+    }
+  } catch { /* noop */ }
   let enabled = false
   try { enabled = localStorage.getItem(LIQUID_GLASS_STORAGE_KEY) === '1' } catch { /* noop */ }
   applyToggle(enabled)

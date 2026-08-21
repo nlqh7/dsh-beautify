@@ -31,7 +31,7 @@ export interface LiquidGlassSettings {
 }
 
 export const LIQUID_GLASS_DEFAULTS: LiquidGlassSettings = {
-  enabled: true,
+  enabled: false,  // 默认关闭：全屏 WebGL + 毛玻璃对低配/集显开销过大（曾卡死浏览器）
   l1Blur: 10,
   l1Opacity: 0.75,
   l1Border: 0.12,
