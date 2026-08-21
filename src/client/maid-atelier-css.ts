@@ -3228,28 +3228,10 @@ body[data-dsh-maid-atelier] [class*='titlebar'] [class*='button']:hover {
   }
 }
 
-/* 非聊天视图（轨迹 Trajectory / 新会话 / 新绘画 / 等检视页）的女仆作为背景画
-   - 尺寸 64vh（不再 96vh 避免被裁） + 靠边
-   - opacity 0.5 + 淡灰：背景画感，不抢戏
-   - stage z-index 2（!important 压过新绘画等页面 dsh 的内联 CSS） + pointer-events none
-     视觉在内容前淡显，鼠标事件穿透，不挡操作 */
-body[data-dsh-maid-atelier]:not([data-maid-chat-active]) [data-maid-character='left'] {
-  height: clamp(420px, 64vh, 760px) !important;
-}
-body[data-dsh-maid-atelier]:not([data-maid-chat-active]) [data-maid-character='right'] {
-  height: clamp(420px, 64vh, 760px) !important;
-}
+/* 非聊天视图（新会话 / 新绘画 / 轨迹等检视页）：恢复上游 maid-atelier 原样——
+   女仆大尺寸（96vh）、清晰、靠边显示，与原作者一致。stage 上游 z-index 3 天然
+   高于液态玻璃 ambient(z-0)，无需额外层级处理。 */
 body[data-dsh-maid-atelier]:not([data-maid-chat-active]) [data-skin-chrome='character-stage'] {
-  z-index: 2 !important;
-  visibility: visible !important;
-  pointer-events: none;
-}
-body[data-dsh-maid-atelier]:not([data-maid-chat-active]) [data-maid-character] {
-  opacity: 0.5;
-  filter: grayscale(0.2) brightness(0.9);
-  pointer-events: none;
-}
-[data-dsh-liquid-glass] body[data-dsh-maid-atelier]:not([data-maid-chat-active]) [data-skin-chrome='character-stage'] {
-  z-index: 3 !important;
+  z-index: 3;
 }
 `;

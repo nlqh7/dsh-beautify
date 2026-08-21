@@ -26,6 +26,8 @@ export interface ShaderOptions {
   dropShadowOpacity: number
   dropShadowBlur: number
   dropShadowY: number
+  /** 极致档：1x 渲染 + 60fps（仅推荐独立显卡）。 */
+  ultra?: boolean
 
   // Layer 0
   background: 'gradient' | 'wallpaper'
@@ -552,11 +554,10 @@ function createLiquidGlassShader(canvas: HTMLCanvasElement, currentOpts: ShaderO
 
   function resize() {
     const dpr = window.devicePixelRatio || 1
-    // 渲染半分辨率：WebGL 纹理 + sceneCanvas 都缩到 0.5x，CSS 拉伸回全屏 → 像素量 ~75% 减少。
-    // 同时限制最大边 1080：4K 屏（dpr 2）时 0.5x 仍有 1920px，进一步压到 1080 上限，
-    // 保证低配/集显设备不会因为超大纹理直接卡死浏览器。
-    const maxSide = 1080
-    const scale = Math.min(0.5, maxSide / Math.max(window.innerWidth, window.innerHeight))
+    // 半分辨率渲染（极致档 1x）：像素量大幅减少；同时限制最大边，避免超大纹理卡死。
+    const maxSide = opts.ultra ? 1440 : 1080
+    const baseScale = opts.ultra ? 1 : 0.5
+    const scale = Math.min(baseScale, maxSide / Math.max(window.innerWidth, window.innerHeight))
     canvas.width = Math.max(1, Math.floor(window.innerWidth * dpr * scale))
     canvas.height = Math.max(1, Math.floor(window.innerHeight * dpr * scale))
     gl!.viewport(0, 0, canvas.width, canvas.height)
@@ -649,9 +650,9 @@ function createLiquidGlassShader(canvas: HTMLCanvasElement, currentOpts: ShaderO
   function frame(now: number) {
     if (disposed) return
     try {
-      // 限 30fps：低性能设备不会每帧跑 shader；视觉无感（24/30fps 足够液态动画）
+      // 限帧：standard 30fps、ultra 60fps、低配自动降级
       const frameGap = now - lastFrameTime
-      if (frameGap < 32) {
+      if (frameGap < (opts.ultra ? 16 : 32)) {
         if (!disposed) animId = requestAnimationFrame(frame)
         return
       }

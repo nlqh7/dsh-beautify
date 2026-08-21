@@ -322,14 +322,18 @@ export function DreamSkinSettings({
   const [showParams, setShowParams] = useState(false)
   const [showCursor, setShowCursor] = useState(false)
   // 液态玻璃皮肤（vendored 自 liquid-glass-theme）：独立 localStorage + 窗口事件，
-  // 与 apply 里的 initLiquidGlass 联动（不经过主题 store）。
-  const [lgGlass, setLgGlass] = useState<boolean>(() => {
-    try { return localStorage.getItem('dsh-beautify:liquidGlass') === '1' } catch { return false }
+  // 与 apply 里的 initLiquidGlass 联动（不经过主题 store）。档位：off/lite/standard/ultra
+  const [lgLevel, setLgLevel] = useState<'off' | 'lite' | 'standard' | 'ultra'>(() => {
+    try {
+      const v = localStorage.getItem('dsh-beautify:liquidGlass')
+      if (v === 'lite' || v === 'standard' || v === 'ultra') return v
+      return 'off'
+    } catch { return 'off' }
   })
-  const toggleLiquidGlass = (on: boolean): void => {
-    setLgGlass(on)
-    try { localStorage.setItem('dsh-beautify:liquidGlass', on ? '1' : '0') } catch { /* noop */ }
-    try { window.dispatchEvent(new CustomEvent('dsh:liquid-glass-toggle', { detail: { on } })) } catch { /* noop */ }
+  const toggleLiquidGlass = (level: 'off' | 'lite' | 'standard' | 'ultra'): void => {
+    setLgLevel(level)
+    try { localStorage.setItem('dsh-beautify:liquidGlass', level) } catch { /* noop */ }
+    try { window.dispatchEvent(new CustomEvent('dsh:liquid-glass-toggle', { detail: { level } })) } catch { /* noop */ }
   }
   const [custom, setCustom] = useState<CustomThemeInput>({
     wallpaperUrl: '',
@@ -479,18 +483,20 @@ export function DreamSkinSettings({
             <div className={css.paramGroup}>
               <div className={css.paramGroupTitle}>液态玻璃</div>
               <Segmented
-                label="液态玻璃皮肤"
-                value={lgGlass ? 'on' : 'off'}
+                label="效果档位"
+                value={lgLevel}
                 options={[
-                  { id: 'on', label: '启用' },
                   { id: 'off', label: '关闭' },
+                  { id: 'lite', label: '轻量' },
+                  { id: 'standard', label: '标准' },
+                  { id: 'ultra', label: '极致' },
                 ]}
-                onSelect={(id) => { toggleLiquidGlass(id === 'on') }}
+                onSelect={(id) => { toggleLiquidGlass(id as 'off' | 'lite' | 'standard' | 'ultra') }}
               />
               <p className={css.hint}>
-                WebGL 物理透镜 + 多层毛玻璃 + 水波交互（溶入自 liquid-glass-theme，MIT）。
-                <br />「变化」：性能已优化——半分辨率渲染、30fps 限帧、模糊 / 水波参数降档；关闭时彻底清理，不留任何残留效果。
-                <br />「问题」：低配 / 集成显卡上开启仍可能偏高占用；个别页面（如新绘画）兼容性可能有差异；浏览器禁用 WebGL 时无透镜效果。
+                WebGL 物理透镜 + 多层毛玻璃（溶入自 liquid-glass-theme，MIT）。
+                <br />「档位」：<b>轻量</b>=纯毛玻璃、不跑 WebGL（低配/集显推荐，几乎不卡）；<b>标准</b>=半分辨率透镜 + 30fps；<b>极致</b>=全效果 + 60fps（仅独立显卡）。
+                <br />「问题」：标准/极致在低配或集成显卡上仍可能明显掉帧；浏览器禁用 WebGL 时轻量档照常、其余档无透镜效果。
               </p>
             </div>
             <div className={css.paramGroup}>

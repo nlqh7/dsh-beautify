@@ -571,6 +571,31 @@ export function setGlass(kind, value) {
 }
 
 /** Push the glass knobs into body CSS variables and gate the glass rules. */
+let glassStyleEl = null;
+function ensureGlassStyle() {
+  if (glassStyleEl && document.head.contains(glassStyleEl)) return glassStyleEl;
+  if (glassStyleEl && !document.head.contains(glassStyleEl)) { glassStyleEl.remove(); glassStyleEl = null; }
+  glassStyleEl = document.createElement("style");
+  glassStyleEl.dataset.dshGlass = "rules";
+  glassStyleEl.textContent = [
+    "body[data-ds-glass] [data-composer-card],",
+    "body[data-ds-glass] [data-input-mirror],",
+    "body[data-ds-glass] [class*='composerSeat'],",
+    "body[data-ds-glass] [class*='MessageRow'] [class*='card'],",
+    "body[data-ds-glass] [role='dialog'][aria-modal='true']",
+    "{",
+    "  backdrop-filter: blur(var(--we-blur, 24px)) saturate(var(--we-saturate, 1.8)) !important;",
+    "  -webkit-backdrop-filter: blur(var(--we-blur, 24px)) saturate(var(--we-saturate, 1.8)) !important;",
+    "  background-color: rgba(255,255,255,0.045) !important;",
+    "}",
+    "body[data-ds-glass] [class*='composerSeat'] {",
+    "  background-image: linear-gradient(135deg, rgba(255,255,255, calc(var(--we-glass-highlight, 0.3) * 0.5)) 0%, rgba(255,255,255,0.01) 100%) !important;",
+    "  border-color: rgba(255,255,255, var(--we-border-alpha, 0.35)) !important;",
+    "}",
+  ].join("\n");
+  document.head.appendChild(glassStyleEl);
+  return glassStyleEl;
+}
 export function applyGlass() {
   const g = readGlass();
   const s = document.body.style;
@@ -581,6 +606,7 @@ export function applyGlass() {
     s.setProperty("--we-glass-highlight", String(g.highlight));
     s.setProperty("--we-glass-shadow", "0.14");
     s.setProperty("--we-border-alpha", String(g.border));
+    ensureGlassStyle();
   } else {
     document.body.removeAttribute("data-ds-glass");
     s.removeProperty("--we-blur");
@@ -1143,6 +1169,7 @@ export function initWallpaperLayer(ctx) {
       const unsubEffects = subscribe(applyEffects);
       syncLayers();
       applyEffects();
+      applyGlass(); // 初始化玻璃参数与规则，滑块默认值一加载即生效
       return () => {
         unsub();
         unsubEffects();

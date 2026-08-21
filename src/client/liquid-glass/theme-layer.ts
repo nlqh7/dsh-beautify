@@ -294,17 +294,26 @@ export class LiquidGlassLayer {
     document.documentElement.setAttribute(LIQUID_GLASS_ATTRIBUTE, 'true')
     this.updateLayerCssVariables()
 
-    // 1. 注入背景 DOM
-    ensureGlassAmbientScene()
+    // 1. 注入背景 DOM —— 轻量档(lite)跳过：不创建 canvas/背景层（毛玻璃全靠
+    //    CSS 变量 + backdrop-filter 规则，不需要 WebGL 场景），杜绝任何 attach 时机问题
+    if (this.settings.lite) {
+      removeGlassAmbientScene()
+    } else {
+      ensureGlassAmbientScene()
+    }
 
-    // 2. 挂载 WebGL 物理透镜 Shader
+    // 2. 挂载 WebGL 物理透镜 Shader —— 轻量档(lite)跳过：只保留 CSS 毛玻璃底色，
+    //    不跑每帧全屏着色（低配/集显不再卡死）
     const canvas = document.querySelector<HTMLCanvasElement>('[data-dsh-glass-canvas]')
-    if (canvas !== null) {
+    if (canvas !== null && !this.settings.lite) {
       if (this.shaderHandle === null) {
         this.shaderHandle = attachLiquidGlassShader(canvas, this.settings)
       } else {
         this.shaderHandle.update(this.settings)
       }
+    } else if (this.shaderHandle !== null) {
+      this.shaderHandle.dispose()
+      this.shaderHandle = null
     }
 
     // 2.1 Radix Popover & Modal L3 毛玻璃注入
@@ -318,8 +327,11 @@ export class LiquidGlassLayer {
       this.tokenDisposer = this.ctx.theme.overrideTokens(OVERRIDE_SOURCE, LIQUID_GLASS_TOKEN_OVERRIDES)
     }
 
-    // 4. 挂载动态 Seam Stamper 穿透底层框架
-    if (this.seamDisposer === undefined) {
+    // 4. 挂载动态 Seam Stamper 穿透底层框架（轻量档跳过，纯静态毛玻璃）
+    if (this.settings.lite) {
+      this.seamDisposer?.()
+      this.seamDisposer = undefined
+    } else if (this.seamDisposer === undefined) {
       this.seamDisposer = startSeamStamper()
     }
 

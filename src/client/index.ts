@@ -21,6 +21,7 @@ import type { MaidSkinController } from './maid-skin.ts'
 import { initMaidAtelier } from './maid-atelier-skin.ts'
 import { initWhaleCursor } from './whale-cursor.ts'
 import { LiquidGlassLayer } from './liquid-glass/theme-layer.ts'
+import { LIQUID_GLASS_LEVELS, type LiquidGlassLevel } from './liquid-glass/settings-store.ts'
 import {
   readCursorUploads,
   writeCursorUploads,
@@ -514,38 +515,55 @@ function applySkin(themeId: string, scrimStrength: number, custom?: CustomThemeI
  * @param ctx - the browser plugin context.
  */
 // 液态玻璃皮肤（vendored from Rainpomelo/deepseek-harness-liquid-glass-theme）：
-// 由小鲸鱼菜单「液态玻璃」开关控制（localStorage + 窗口事件），开启时挂载
-// WebGL 透镜/毛玻璃渲染层，关闭时停用；不依赖桌面端后端 API（缺失即用默认）。
+// 由设置面板「液态玻璃」档位控制（localStorage + 窗口事件）。档位：
+//   off(关闭) / lite(轻量·纯毛玻璃无 WebGL) / standard(标准·降级透镜) / ultra(极致·全效果)
 const LIQUID_GLASS_STORAGE_KEY = 'dsh-beautify:liquidGlass'
 const LIQUID_GLASS_TOGGLE_EVENT = 'dsh:liquid-glass-toggle'
 // 「先关了」标记：液态玻璃全屏 WebGL + 毛玻璃对低配/集显开销过大（曾卡死浏览器），
 // 本版本一次性强制关闭并清除开启残留（只生效一次），之后完全尊重用户显式设置。
 const LIQUID_GLASS_QUARANTINE_KEY = 'dsh-beautify:liquidGlassQuarantined'
+
+function normalizeLevel(v: string | null): LiquidGlassLevel {
+  if (v === 'lite' || v === 'standard' || v === 'ultra') return v
+  if (v === '1') return 'standard' // 兼容旧开启标记
+  return 'off'
+}
+
 function initLiquidGlass(ctx: ClientContext): () => void {
   let layer: LiquidGlassLayer | null = null
-  const applyToggle = (on: boolean): void => {
+  const applyLevel = (level: LiquidGlassLevel): void => {
     try {
-      if (on) {
-        if (layer === null) layer = new LiquidGlassLayer(ctx as never)
-        layer.setEnabled(true)
-      } else if (layer !== null) {
-        layer.setEnabled(false)
+      if (level === 'off') {
+        layer?.setEnabled(false)
+        return
       }
+      if (layer === null) layer = new LiquidGlassLayer(ctx as never)
+      // 强制重建：先关再应用参数再开 —— setEnabled(true) 在 enabled 已为 true 时会
+      // 直接短路返回，档位切换（lite↔standard↔ultra）必须走完整 sync（重建 ambient/挂 shader）
+      layer.setEnabled(false)
+      layer.updateSettings({ ...LIQUID_GLASS_LEVELS[level] })
+      layer.setEnabled(true)
     } catch (err) { /* never break the host */ }
   }
   try {
     if (localStorage.getItem(LIQUID_GLASS_QUARANTINE_KEY) !== '1') {
-      localStorage.setItem(LIQUID_GLASS_STORAGE_KEY, '0')
+      localStorage.setItem(LIQUID_GLASS_STORAGE_KEY, 'off')
       localStorage.setItem(LIQUID_GLASS_QUARANTINE_KEY, '1')
     }
   } catch { /* noop */ }
-  let enabled = false
-  try { enabled = localStorage.getItem(LIQUID_GLASS_STORAGE_KEY) === '1' } catch { /* noop */ }
-  applyToggle(enabled)
+  let level: LiquidGlassLevel = 'off'
+  try { level = normalizeLevel(localStorage.getItem(LIQUID_GLASS_STORAGE_KEY)) } catch { /* noop */ }
+  applyLevel(level)
   const onToggle = (e: Event): void => {
-    const on = (e as CustomEvent<{ on?: boolean }>).detail?.on === true
-    try { localStorage.setItem(LIQUID_GLASS_STORAGE_KEY, on ? '1' : '0') } catch { /* noop */ }
-    applyToggle(on)
+    const detail = (e as CustomEvent<{ level?: LiquidGlassLevel; on?: boolean }>).detail
+    let next: LiquidGlassLevel = 'off'
+    if (detail?.level !== undefined) {
+      next = normalizeLevel(String(detail.level))
+    } else if (detail?.on === true) {
+      next = 'standard' // 兼容旧 {on:true} 事件
+    }
+    try { localStorage.setItem(LIQUID_GLASS_STORAGE_KEY, next) } catch { /* noop */ }
+    applyLevel(next)
   }
   window.addEventListener(LIQUID_GLASS_TOGGLE_EVENT, onToggle)
   return () => {
