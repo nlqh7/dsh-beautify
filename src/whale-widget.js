@@ -234,21 +234,6 @@ var babySoundBtn = document.createElement('button')
 babySoundBtn.className = 'dshwv-sound'
 babySoundBtn.textContent = '子代理声音：开'
 babySoundBtn.addEventListener('click', function () { setBabySound(!babySound) })
-// 液态玻璃皮肤开关（溶入自 deepseek-harness-liquid-glass-theme）：状态存
-// localStorage，并通过窗口事件通知浏览器端皮肤层启停。
-var lgGlassOn = false
-try { lgGlassOn = localStorage.getItem('dsh-beautify:liquidGlass') === '1' } catch (err) {}
-var lgGlassBtn = document.createElement('button')
-lgGlassBtn.className = 'dshwv-sound'
-lgGlassBtn.textContent = '液态玻璃：' + (lgGlassOn ? '开' : '关')
-lgGlassBtn.addEventListener('click', function () {
-  lgGlassOn = !lgGlassOn
-  try { localStorage.setItem('dsh-beautify:liquidGlass', lgGlassOn ? '1' : '0') } catch (err) {}
-  lgGlassBtn.textContent = '液态玻璃：' + (lgGlassOn ? '开' : '关')
-  try {
-    window.dispatchEvent(new CustomEvent('dsh:liquid-glass-toggle', { detail: { on: lgGlassOn } }))
-  } catch (err) {}
-})
 var usageSelect = document.createElement('select')
 usageSelect.className = 'dshwv-sound'
 usageSelect.appendChild(soundOpt('ledger', '小鲸鱼记账 (推荐)'))
@@ -264,9 +249,6 @@ row2.appendChild(soundSelect)
 var rowBaby = menuRow()
 rowBaby.appendChild(menuLabel('子代理'))
 rowBaby.appendChild(babySoundBtn)
-var rowLG = menuRow()
-rowLG.appendChild(menuLabel('皮肤'))
-rowLG.appendChild(lgGlassBtn)
 var volInput = document.createElement('input')
 volInput.type = 'range'
 volInput.min = '0'
@@ -288,7 +270,6 @@ row4.appendChild(usageSelect)
 menuBox.appendChild(row1)
 menuBox.appendChild(row2)
 menuBox.appendChild(rowBaby)
-menuBox.appendChild(rowLG)
 menuBox.appendChild(row3)
 menuBox.appendChild(row4)
 

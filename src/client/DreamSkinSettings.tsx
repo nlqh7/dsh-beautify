@@ -321,6 +321,17 @@ export function DreamSkinSettings({
     : Object.entries(featureStatus).filter(([, s]) => !s.ok)
   const [showParams, setShowParams] = useState(false)
   const [showCursor, setShowCursor] = useState(false)
+  const [showLiquidGlass, setShowLiquidGlass] = useState(false)
+  // 液态玻璃皮肤（vendored 自 liquid-glass-theme）：独立 localStorage + 窗口事件，
+  // 与 apply 里的 initLiquidGlass 联动（不经过主题 store）。
+  const [lgGlass, setLgGlass] = useState<boolean>(() => {
+    try { return localStorage.getItem('dsh-beautify:liquidGlass') === '1' } catch { return false }
+  })
+  const toggleLiquidGlass = (on: boolean): void => {
+    setLgGlass(on)
+    try { localStorage.setItem('dsh-beautify:liquidGlass', on ? '1' : '0') } catch { /* noop */ }
+    try { window.dispatchEvent(new CustomEvent('dsh:liquid-glass-toggle', { detail: { on } })) } catch { /* noop */ }
+  }
   const [custom, setCustom] = useState<CustomThemeInput>({
     wallpaperUrl: '',
     accent: '#c8a55a',
@@ -448,6 +459,34 @@ export function DreamSkinSettings({
             {!cursorEnabled && (
               <p className={css.hint}>已关闭光标美化，使用系统原生光标。</p>
             )}
+          </div>
+        </div>
+      </div>
+      <div className={css.section}>
+        <button
+          type="button"
+          className={css.groupHeader}
+          aria-expanded={showLiquidGlass}
+          onClick={() => { setShowLiquidGlass(v => !v) }}
+        >
+          <span className={css.groupHeaderText}>液态玻璃</span>
+          <span className={css.groupHeaderActions}>
+            <span className={css.groupCount}>{lgGlass ? '已启用' : '已关闭'}</span>
+            <span className={showLiquidGlass ? `${css.chevron} ${css.chevronOpen}` : css.chevron} aria-hidden="true">▾</span>
+          </span>
+        </button>
+        <div className={css.collapse} data-open={showLiquidGlass}>
+          <div className={css.collapseInner}>
+            <Segmented
+              label="液态玻璃皮肤"
+              value={lgGlass ? 'on' : 'off'}
+              options={[
+                { id: 'on', label: '启用' },
+                { id: 'off', label: '关闭' },
+              ]}
+              onSelect={(id) => { toggleLiquidGlass(id === 'on') }}
+            />
+            <p className={css.hint}>WebGL 物理透镜 + 多层毛玻璃 + 水波交互（溶入自 liquid-glass-theme，MIT）。开启后整个界面呈液态玻璃质感；壁纸/参数在界面右上角的小鲸鱼面板或详情入口调整。</p>
           </div>
         </div>
       </div>
