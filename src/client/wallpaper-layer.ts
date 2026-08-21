@@ -955,6 +955,17 @@ const CSS = `
     --dsw-alias-border-l2-darkmode-thin: rgba(180, 180, 180, var(--we-border-alpha, 0.35));
   }
 
+  /* The wallpaper layer lives at z-index:-2, which paints BELOW the body
+     background. Theme systems (incl. the maid atelier skin) often paint a
+     background-image onto <body> — either directly or through an inline
+     --dsw-alias-bg-base custom property that outranks stylesheet overrides —
+     which silently hides the wallpaper. Wipe the whole background (colour AND
+     image) while a wallpaper is active so the behind-body layer shows through.
+     !important is required to beat the inline custom-property-driven rule. */
+  body[data-we-wallpaper] {
+    background: transparent !important;
+  }
+
   /* ── Light-scheme text contrast boost ──────────────────────────────────────
      In light mode the grays (tertiary/caption/secondary) were tuned against a
      near-white page. Over a busy wallpaper + light scrim they lose contrast, so

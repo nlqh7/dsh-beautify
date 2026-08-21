@@ -3249,6 +3249,6 @@ body[data-dsh-maid-atelier] [class*='MessageRow'] [class*='card'] {
    (#dce6f5)，会盖住 we-layer 壁纸层，导致「选了壁纸但界面没变化」。
    启用 WE 壁纸时把 body 背景改为透明，让壁纸层透出。 */
 body[data-dsh-maid-atelier][data-we-wallpaper] {
-  background-color: transparent !important;
+  background: transparent !important;
 }
 `;

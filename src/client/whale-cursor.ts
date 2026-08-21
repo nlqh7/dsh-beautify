@@ -228,7 +228,11 @@ export function initWhaleCursor(
       setGate()
       return
     }
-    img.src = next.image
+    // Only touch the src when it actually changes: re-assigning the same
+    // data URI re-triggers a load and aborts a pending img.decode() promise
+    // (which would flip imageReady to false and keep the gate closed —
+    // the art cursor silently disappears).
+    if (img.src !== next.image) img.src = next.image
     img.style.width = `${spriteSize}px`
     img.style.height = `${spriteSize}px`
     // Store the hot spot scaled to the rendered sprite size, so the move
@@ -281,7 +285,23 @@ export function initWhaleCursor(
     })
   }
 
-  const onLeave = (): void => { hide() }
+  const onLeave = (): void => {
+    // Reset transient interaction flags: if a pointerup was missed (drag out
+    // of the window, alt-tab, iframe boundary) `dragging` would stay true and
+    // the gate would never re-open — the art cursor would silently disappear.
+    // Leaving the window restores everything to a clean auto-detect state.
+    if (dragging || hoverNative) {
+      dragging = false
+      hoverNative = false
+      stateTarget = null
+      current = ''
+      applyState(explicit ?? DEFAULT_STATE)
+    }
+    hide()
+  }
+  // Window blur / page hide can also lose pointerup without a pointerleave;
+  // reset the same way so the art cursor always comes back.
+  const onBlurReset = (): void => { onLeave() }
 
   // Primary-button press switches to the drag state; release returns to
   // automatic target detection. A disabled drag state falls back to the
@@ -301,14 +321,21 @@ export function initWhaleCursor(
     stateTarget = null
   }
 
-  // Warm the default sprite's decode before hiding the native cursor, so a
-  // refresh never shows a gap where neither cursor is visible.
-  img.decode().then((): void => {
+  // Warm the sprite's readiness before hiding the native cursor, so a refresh
+  // never shows a gap where neither cursor is visible. Readiness is driven by
+  // the load event (fires on every src swap, never stuck): decode() alone is
+  // unreliable because re-assigning the same data URI later aborts its pending
+  // promise, which would permanently keep the gate closed.
+  const markReady = (): void => {
+    if (imageReady) return
     imageReady = true
     setGate()
-  }).catch((): void => {
-    // Keep the native cursor if the sprite cannot decode.
-    imageReady = false
+  }
+  const markError = (): void => { imageReady = false }
+  img.addEventListener('load', markReady)
+  img.addEventListener('error', markError)
+  img.decode().then(markReady).catch((): void => {
+    // Fallback: the load event will still fire when the sprite decodes.
   })
   setGate()
   reducedMotionQuery.addEventListener('change', onReducedMotionChange)
@@ -318,6 +345,8 @@ export function initWhaleCursor(
   document.addEventListener('pointerdown', onPointerDown, { passive: true })
   document.addEventListener('pointerup', onPointerUp, { passive: true })
   document.addEventListener('pointercancel', onPointerUp)
+  window.addEventListener('blur', onBlurReset)
+  document.addEventListener('visibilitychange', onBlurReset)
 
   return {
     refresh: setGate,
@@ -361,7 +390,11 @@ export function initWhaleCursor(
       document.removeEventListener('pointerdown', onPointerDown)
       document.removeEventListener('pointerup', onPointerUp)
       document.removeEventListener('pointercancel', onPointerUp)
+      window.removeEventListener('blur', onBlurReset)
+      document.removeEventListener('visibilitychange', onBlurReset)
       reducedMotionQuery.removeEventListener('change', onReducedMotionChange)
+      img.removeEventListener('load', markReady)
+      img.removeEventListener('error', markError)
       if (raf !== 0) cancelAnimationFrame(raf)
       root.removeAttribute(WHALE_CURSOR_ATTRIBUTE)
       whale.remove()
