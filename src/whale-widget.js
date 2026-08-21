@@ -1192,7 +1192,7 @@ function onBabyPointerDown(e) {
   // 从而切到 drag 状态并让出原生光标（否则拖动时皮肤盖住抓取手）。
   try { e.preventDefault() } catch (err) {}
   babyDrag = {
-    id: id, active: true,
+    id: id, active: true, moved: false,
     startX: e.clientX, startY: e.clientY,
     origLeft: parseFloat(el.style.left) || 0,
     origTop: parseFloat(el.style.top) || 0,
@@ -1209,6 +1209,11 @@ function onBabyPointerMove(e) {
   if (!babyDrag || !babyDrag.active) return
   var el = babyWhales.get(babyDrag.id)
   if (!el) { endBabyDrag(); return }
+  // 位移超过 5px 才算真拖动；否则视为"摸头/点击"，松手时不吸附、不锁定位置
+  if (Math.abs(e.clientX - babyDrag.startX) + Math.abs(e.clientY - babyDrag.startY) > 5) {
+    babyDrag.moved = true
+  }
+  if (!babyDrag.moved) return
   var vp = viewport()
   var w = el.offsetWidth || el.getBoundingClientRect().width || 0
   var h = el.offsetHeight || el.getBoundingClientRect().height || 0
@@ -1216,25 +1221,77 @@ function onBabyPointerMove(e) {
   el.style.top = Math.round(clamp(babyDrag.origTop + e.clientY - babyDrag.startY, 0, Math.max(0, vp.h - h))) + 'px'
 }
 function onBabyPointerUp() { endBabyDrag() }
+// 两个矩形是否重叠（pad 为最小安全间距，模拟"碰撞体积"）。
+function rectsOverlap(a, b, pad) {
+  pad = pad || 0
+  return a.left < b.right - pad && a.right > b.left + pad &&
+    a.top < b.bottom - pad && a.bottom > b.top + pad
+}
+// 碰撞体积：把小鲸鱼从重叠位置沿"最小位移方向"推开，直到不再压到主鲸鱼
+// 或其他小鲸鱼（最多推 6 步，每步保持屏幕内）。
+function resolveBabyCollision(id, l, t, w, h, vp) {
+  var pad = 8
+  var others = []
+  try {
+    var rr = root.getBoundingClientRect()
+    if (rr && rr.width > 0) others.push({ left: rr.left, top: rr.top, right: rr.right, bottom: rr.bottom })
+  } catch (err) {}
+  babyWhales.forEach(function (b, bid) {
+    if (bid === id || !b) return
+    try {
+      var r = b.getBoundingClientRect()
+      if (r && r.width > 0) others.push({ left: r.left, top: r.top, right: r.right, bottom: r.bottom })
+    } catch (err) {}
+  })
+  var mine = { left: l, top: t, right: l + w, bottom: t + h }
+  for (var pass = 0; pass < 6; pass++) {
+    var hit = null
+    for (var i = 0; i < others.length; i++) {
+      if (rectsOverlap(mine, others[i], pad)) { hit = others[i]; break }
+    }
+    if (!hit) break
+    var dRight = mine.right - hit.left + pad
+    var dLeft = hit.right - mine.left + pad
+    var dDown = mine.bottom - hit.top + pad
+    var dUp = hit.bottom - mine.top + pad
+    var min = Math.min(dRight, dLeft, dDown, dUp)
+    if (min === dRight) l += dRight
+    else if (min === dLeft) l -= dLeft
+    else if (min === dDown) t += dDown
+    else t -= dUp
+    l = clamp(l, 0, Math.max(0, vp.w - w))
+    t = clamp(t, 0, Math.max(0, vp.h - h))
+    mine = { left: l, top: t, right: l + w, bottom: t + h }
+  }
+  return { left: Math.round(l), top: Math.round(t) }
+}
 function endBabyDrag() {
   if (!babyDrag) return
   var el = babyWhales.get(babyDrag.id)
   if (el) {
     el.classList.remove('dshwv-baby-dragging')
-    // 手动放置后保持位置，不再被自动环绕拉回
-    babyManual.add(babyDrag.id)
-    // 和主鲸鱼一样：靠近屏幕边缘时吸附墙壁
     var vp = viewport()
     var w = el.offsetWidth || el.getBoundingClientRect().width || 0
     var h = el.offsetHeight || el.getBoundingClientRect().height || 0
     var l = parseFloat(el.style.left) || 0
     var t = parseFloat(el.style.top) || 0
-    var cx = l + w / 2
-    var cy = t + h / 2
-    if (cx < vp.w / 4) l = 0
-    else if (cx > vp.w * 3 / 4) l = Math.max(0, vp.w - w)
-    if (cy < vp.h / 4) t = 0
-    else if (cy > vp.h * 3 / 4) t = Math.max(0, vp.h - h)
+    // 只是摸一下（没拖动）：位置原样保留，不锁定、不吸附——避免"点一下
+    // 小鲸鱼就被吸到角落"的误操作。
+    if (babyDrag.moved) {
+      // 手动放置后保持位置，不再被自动排列拉回
+      babyManual.add(babyDrag.id)
+      // 和主鲸鱼一样：靠近屏幕边缘时吸附墙壁
+      var cx = l + w / 2
+      var cy = t + h / 2
+      if (cx < vp.w / 4) l = 0
+      else if (cx > vp.w * 3 / 4) l = Math.max(0, vp.w - w)
+      if (cy < vp.h / 4) t = 0
+      else if (cy > vp.h * 3 / 4) t = Math.max(0, vp.h - h)
+      // 碰撞体积：推开与其他小鲸鱼 / 主鲸鱼重叠的位置
+      var resolved = resolveBabyCollision(babyDrag.id, l, t, w, h, vp)
+      l = resolved.left
+      t = resolved.top
+    }
     el.style.left = Math.round(l) + 'px'
     el.style.top = Math.round(t) + 'px'
   }
