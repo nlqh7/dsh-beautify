@@ -20,6 +20,7 @@ import { initMaidSkin } from './maid-skin.ts'
 import type { MaidSkinController } from './maid-skin.ts'
 import { initMaidAtelier } from './maid-atelier-skin.ts'
 import { initWhaleCursor } from './whale-cursor.ts'
+import { LiquidGlassLayer } from './liquid-glass/theme-layer.ts'
 import {
   readCursorUploads,
   writeCursorUploads,
@@ -512,8 +513,42 @@ function applySkin(themeId: string, scrimStrength: number, custom?: CustomThemeI
  * 外观 switching section.
  * @param ctx - the browser plugin context.
  */
+// 液态玻璃皮肤（vendored from Rainpomelo/deepseek-harness-liquid-glass-theme）：
+// 由小鲸鱼菜单「液态玻璃」开关控制（localStorage + 窗口事件），开启时挂载
+// WebGL 透镜/毛玻璃渲染层，关闭时停用；不依赖桌面端后端 API（缺失即用默认）。
+const LIQUID_GLASS_STORAGE_KEY = 'dsh-beautify:liquidGlass'
+const LIQUID_GLASS_TOGGLE_EVENT = 'dsh:liquid-glass-toggle'
+function initLiquidGlass(ctx: ClientContext): () => void {
+  let layer: LiquidGlassLayer | null = null
+  const applyToggle = (on: boolean): void => {
+    try {
+      if (on) {
+        if (layer === null) layer = new LiquidGlassLayer(ctx as never)
+        layer.setEnabled(true)
+      } else if (layer !== null) {
+        layer.setEnabled(false)
+      }
+    } catch (err) { /* never break the host */ }
+  }
+  let enabled = false
+  try { enabled = localStorage.getItem(LIQUID_GLASS_STORAGE_KEY) === '1' } catch { /* noop */ }
+  applyToggle(enabled)
+  const onToggle = (e: Event): void => {
+    const on = (e as CustomEvent<{ on?: boolean }>).detail?.on === true
+    try { localStorage.setItem(LIQUID_GLASS_STORAGE_KEY, on ? '1' : '0') } catch { /* noop */ }
+    applyToggle(on)
+  }
+  window.addEventListener(LIQUID_GLASS_TOGGLE_EVENT, onToggle)
+  return () => {
+    window.removeEventListener(LIQUID_GLASS_TOGGLE_EVENT, onToggle)
+    try { layer?.dispose() } catch { /* noop */ }
+    layer = null
+  }
+}
+
 export function apply(ctx: ClientContext): void {
   initWallpaperLayer(ctx)
+  const disposeLiquidGlass = initLiquidGlass(ctx)
   // Skin-independent performance overrides for the settings surface (mask
   // backdrop-filter drop + off-screen row skipping); disposed with the plugin.
   const disposeSettingsPerf = initSettingsPerf()
@@ -720,6 +755,7 @@ export function apply(ctx: ClientContext): void {
   ctx.effect(() => () => {
     disposeSettingsPerf()
     disposeSubagentWatcher()
+    disposeLiquidGlass()
     darkObserver.disconnect()
     cursor.dispose()
     if (maid !== undefined) {
