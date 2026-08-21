@@ -167,10 +167,10 @@ interface StoredPrefs {
 function readPrefs(): StoredPrefs {
   try {
     const raw = localStorage.getItem(STORAGE_KEY)
-    if (raw === null) return { themeId: 'system', scrimStrength: DEFAULT_SCRIM_STRENGTH, cursorEnabled: true, cursorSkin: 'whale', cursorSize: 48, cursorStateOverrides: {} }
+    if (raw === null) return { themeId: 'maid-atelier', scrimStrength: DEFAULT_SCRIM_STRENGTH, cursorEnabled: true, cursorSkin: 'whale', cursorSize: 48, cursorStateOverrides: {} }
     const parsed = JSON.parse(raw) as Partial<StoredPrefs>
     return {
-      themeId: typeof parsed.themeId === 'string' ? parsed.themeId : 'system',
+      themeId: typeof parsed.themeId === 'string' ? parsed.themeId : 'maid-atelier',
       scrimStrength: typeof parsed.scrimStrength === 'number'
         ? parsed.scrimStrength
         : DEFAULT_SCRIM_STRENGTH,
@@ -185,7 +185,7 @@ function readPrefs(): StoredPrefs {
       ...(parsed.customTheme === undefined ? {} : { customTheme: parsed.customTheme }),
     }
   } catch {
-    return { themeId: 'system', scrimStrength: DEFAULT_SCRIM_STRENGTH, cursorEnabled: true, cursorSkin: 'whale', cursorSize: 48, cursorStateOverrides: {} }
+    return { themeId: 'maid-atelier', scrimStrength: DEFAULT_SCRIM_STRENGTH, cursorEnabled: true, cursorSkin: 'whale', cursorSize: 48, cursorStateOverrides: {} }
   }
 }
 
