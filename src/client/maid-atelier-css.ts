@@ -3229,9 +3229,19 @@ body[data-dsh-maid-atelier] [class*='titlebar'] [class*='button']:hover {
 }
 
 /* 非聊天视图（新会话 / 新绘画 / 轨迹等）：女仆 z-index 2 —— 高于 dsh 普通内容
-   (z-auto) 可见、低于 dsh 弹窗 portal (z≥50) 不挡弹窗；chat-active 时上游规则仍给
+   (z-auto) 可见作背景画、低于 dsh 弹窗 portal (z≥50) 不挡弹窗；chat-active 时上游规则仍给
    z-3（在内容前靠边显示）。pointer-events:none 已由上游设置，鼠标穿透不挡操作。 */
 body[data-dsh-maid-atelier]:not([data-maid-chat-active]) [data-skin-chrome='character-stage'] {
   z-index: 2;
+}
+
+/* 女仆 z=2 仍会盖住 dsh 底部 composerSeat / 输入区（96vh 大图的下半延伸到屏幕中下）。
+   把 dsh 可操作 UI 提升到女仆之上（z=100），女仆退居背景画但不挡用户真正需要
+   点击的输入/对话框。仅在 maid 主题启用时生效，避免影响其他主题。 */
+body[data-dsh-maid-atelier] [class*='composerSeat'],
+body[data-dsh-maid-atelier] [data-composer-card],
+body[data-dsh-maid-atelier] [data-input-mirror],
+body[data-dsh-maid-atelier] [class*='MessageRow'] [class*='card'] {
+  z-index: 100 !important;
 }
 `;

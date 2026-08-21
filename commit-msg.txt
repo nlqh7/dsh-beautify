@@ -1,20 +1,14 @@
-fix: dialog back to opaque, maid z=2 (dialog covers), glass default off + quarantine
+fix: lift dsh composer/inputs above the maid stage so the input row isn't painted over
 
-- glass rule scope tightened to composer/input/message card only; removed
-  [role=dialog][aria-modal=true] which was bleaching the whole settings
-  modal into a white-frosted sheet. Dialogs stay fully opaque.
-- GLASS_DEFAULTS.blur: 24 -> 0 so a fresh install does NOT get a frosted
-  overlay on load. Slider defaults to 0; user must raise it explicitly.
-- quarantine mirrors the LG one: on first run after this update, force any
-  persisted blur > 0 back to 0 (one-shot). Users who actively raised the
-  slider still get their value; users with stale blur are cleared so they
-  do not see the white sheet again.
-- maid non-chat stage z: 3 -> 2. z 3 sat above dsh dialogs (50+) and covered
-  the settings modal. z 2 is above normal content (z-auto) so the
-  characters stay visible, but below dsh dialog/portal so they no longer
-  paint over modals. chat-active keeps the upstream z=3.
+The non-chat maid stage sits at z=2 (above content z-auto, below dialogs
+z>=50). At 96vh the bottom half of the side characters extends across
+the bottom of the viewport and covers the dsh composer / input row.
 
-Verified in a fresh playwright context with a pre-seeded stale glass
-config: glass attribute removed, backdrop-blur count from 4 down to 1
-(only dsh own card blur, unrelated); maid stage z=2 with character h=864
-(96vh upstream).
+Promote composerSeat + composerCard + inputMirror + MessageRow card to
+z-index 100 within body[data-dsh-maid-atelier]. The stage stays z=2
+(visible as background art), but anything the user can actually click
+on (composer, message bubbles) sits above it. Scoped to maid so other
+skins are untouched.
+
+Verified in playwright: maid stage z=2, composerSeat + composerCard
+both z=100.
