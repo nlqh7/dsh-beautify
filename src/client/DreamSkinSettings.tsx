@@ -95,7 +95,6 @@ function WallpaperEngineBlock() {
   }
   const [open, setOpen] = useState(false)
   const wallpapers = Array.isArray(sel.inventory.wallpapers) ? sel.inventory.wallpapers.filter(w => w.playable) : []
-  const current = wallpapers.find(w => w.id === sel.id)
   const openPicker = (): void => {
     if (!sel.loaded) void loadInventory()
     setOpen(true)
@@ -122,13 +121,6 @@ function WallpaperEngineBlock() {
             ? <div className={css.hint}>扫描中…</div>
             : (
               <>
-                {current && (
-                  <div className={css.modalPreview}>
-                    {current.preview
-                      ? <img className={css.wePreviewImage} src={current.preview} alt={current.title} />
-                      : <div className={css.wePreviewPlaceholder}>{current.title}</div>}
-                  </div>
-                )}
                 <div className={css.weGrid}>
                   {wallpapers.map(w => (
                     <button

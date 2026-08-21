@@ -1,14 +1,14 @@
-fix: lift dsh composer/inputs above the maid stage so the input row isn't painted over
+fix: WE picker drop big preview + maid no longer covers the WE wallpaper layer
 
-The non-chat maid stage sits at z=2 (above content z-auto, below dialogs
-z>=50). At 96vh the bottom half of the side characters extends across
-the bottom of the viewport and covers the dsh composer / input row.
+- WallpaperEngineBlock: remove the modalPreview (large preview image at the
+  top of the picker); the tile grid stays.
+- Root cause of "wallpaper switch does nothing": maid-atelier sets an
+  opaque body background-color (#dce6f5) that painted over the WE
+  wallpaper layer even though body[data-we-wallpaper] makes the --dsw-alias
+  tokens transparent. Add
+  body[data-dsh-maid-atelier][data-we-wallpaper] { background-color:
+  transparent !important; } so the selected wallpaper actually shows.
 
-Promote composerSeat + composerCard + inputMirror + MessageRow card to
-z-index 100 within body[data-dsh-maid-atelier]. The stage stays z=2
-(visible as background art), but anything the user can actually click
-on (composer, message bubbles) sits above it. Scoped to maid so other
-skins are untouched.
-
-Verified in playwright: maid stage z=2, composerSeat + composerCard
-both z=100.
+Verified in playwright: picker has no modalPreview; after clicking the
+first tile (web wallpaper) the WE layer exists with an iframe and the
+maid body background is transparent, so the wallpaper is visible.

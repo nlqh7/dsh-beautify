@@ -3244,4 +3244,11 @@ body[data-dsh-maid-atelier] [data-input-mirror],
 body[data-dsh-maid-atelier] [class*='MessageRow'] [class*='card'] {
   z-index: 100 !important;
 }
+
+/* Wallpaper Engine 壁纸切换：maid 主题给 body 直接设了不透明背景色
+   (#dce6f5)，会盖住 we-layer 壁纸层，导致「选了壁纸但界面没变化」。
+   启用 WE 壁纸时把 body 背景改为透明，让壁纸层透出。 */
+body[data-dsh-maid-atelier][data-we-wallpaper] {
+  background-color: transparent !important;
+}
 `;
