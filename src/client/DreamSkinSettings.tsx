@@ -487,11 +487,14 @@ export function DreamSkinSettings({
                 ]}
                 onSelect={(id) => { toggleLiquidGlass(id === 'on') }}
               />
-              <p className={css.hint}>WebGL 物理透镜 + 多层毛玻璃 + 水波交互（溶入自 liquid-glass-theme，MIT）。开启后整个界面呈液态玻璃质感；详细参数在子代理面板 / 设置弹窗中调整。</p>
+              <p className={css.hint}>
+                WebGL 物理透镜 + 多层毛玻璃 + 水波交互（溶入自 liquid-glass-theme，MIT）。
+                <br />「变化」：性能已优化——半分辨率渲染、30fps 限帧、模糊 / 水波参数降档；关闭时彻底清理，不留任何残留效果。
+                <br />「问题」：低配 / 集成显卡上开启仍可能偏高占用；个别页面（如新绘画）兼容性可能有差异；浏览器禁用 WebGL 时无透镜效果。
+              </p>
             </div>
             <div className={css.paramGroup}>
               <div className={css.paramGroupTitle}>壁纸</div>
-              <WallpaperEngineBlock />
               <Knob label="壁纸模糊" value={wallpaper.blur} min={0} max={60} step={1} unit="px" onChange={(v) => { onWallpaper({ blur: v }) }} />
               <Knob label="焦点 · 左右" value={wallpaper.focusX >= 0 ? wallpaper.focusX : (activePreset?.wallpaper?.focusX ?? 0.5)} min={0} max={1} step={0.01} onChange={(v) => { onWallpaper({ focusX: v }) }} />
               <Knob label="焦点 · 上下" value={wallpaper.focusY >= 0 ? wallpaper.focusY : (activePreset?.wallpaper?.focusY ?? 0.5)} min={0} max={1} step={0.01} onChange={(v) => { onWallpaper({ focusY: v }) }} />
@@ -562,6 +565,7 @@ export function DreamSkinSettings({
           </div>
         </div>
       </div>
+      <WallpaperEngineBlock />
     </div>
   )
 }
