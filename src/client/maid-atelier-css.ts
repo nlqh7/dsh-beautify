@@ -3251,4 +3251,14 @@ body[data-dsh-maid-atelier] [class*='MessageRow'] [class*='card'] {
 body[data-dsh-maid-atelier][data-we-wallpaper] {
   background: transparent !important;
 }
+
+/* 轨迹视图（TrajectoryView，根节点带 data-conversation-composer-overlay）
+   不显示女仆：96vh 大立绘会遮住轨迹内容。新会话 / 新绘画等其它非聊天页
+   仍保留女仆（由上面的 z-index 2 规则控制）。 */
+body[data-dsh-maid-atelier]:has([data-conversation-composer-overlay])
+  [data-skin-chrome='character-stage'],
+body[data-dsh-maid-atelier]:has([data-conversation-composer-overlay])
+  [data-maid-character] {
+  display: none !important;
+}
 `;

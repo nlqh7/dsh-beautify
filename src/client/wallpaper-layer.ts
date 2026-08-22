@@ -959,18 +959,26 @@ const CSS = `
     z-index: 2;
   }
 
-  /* While a wallpaper is active the LAYOUT SHELL must be see-through so the
-     wallpaper+scrim stack shows through — but the maid atelier's own
-     decorations (top trim art, sidebar corners, bottom trim, character
-     stage, character layers) are bound to the maid theme and stay opaque
-     ON TOP of the wallpaper. Only the dsh layout's frame/root/sidebarCol
-     gradient backgrounds get wiped; the skin chrome keeps its look.
+  /* While a wallpaper is active the whole page becomes the wallpaper: wipe
+     the layout shell's gradient/colour backgrounds AND hide the active
+     theme's decorative skin chrome (maid atelier trim art, sidebar corners,
+     bottom trim, character stage and characters). Those decorations are
+     bound to the maid skin — in WE mode they must not be carried over.
      Frosted-glass surfaces (composer card, message bubbles) keep their own
      translucent backgrounds and are unaffected by these selectors. */
+  body[data-we-wallpaper] [data-pane],
+  body[data-we-wallpaper] [class*="sidebarCol"],
+  body[data-we-wallpaper] [class*="sidebarCol"] > div,
+  body[data-we-wallpaper] [class*="centerCol"],
+  body[data-we-wallpaper] [class*="detailsCol"],
   body[data-we-wallpaper] [class*="_frame"],
-  body[data-we-wallpaper] [class*="_root"],
-  body[data-we-wallpaper] [class*="sidebarCol"] {
+  body[data-we-wallpaper] [class*="_root"] {
     background: transparent !important;
+  }
+  body[data-we-wallpaper] [data-skin-trim-layer],
+  body[data-we-wallpaper] [data-skin-chrome],
+  body[data-we-wallpaper] [data-maid-character] {
+    display: none !important;
   }
 
   /* While a wallpaper is active: make the app frame AND sidebar transparent so
