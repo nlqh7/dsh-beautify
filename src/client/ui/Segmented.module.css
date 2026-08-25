@@ -1,39 +1,44 @@
-/* Segmented picker: evenly split cells in a hairline frame; the active cell
-   carries the business tint, hover answers with the interactive wash. */
+/* Segmented picker: evenly split cells in a hairline frame; the active cell is
+   an inset rounded block carrying the business tint, hover answers with the
+   interactive wash. */
 .segmented {
   display: flex;
   border: 1px solid var(--dsw-alias-border-l2);
-  border-radius: 8px;
+  border-radius: 9px;
   overflow: hidden;
+  padding: 2px;
+  gap: 2px;
+  background: var(--dsw-alias-bg-layer-2);
 }
 
 .seg {
   flex: 1;
   min-width: 0;
-  height: 28px;
+  height: 26px;
   padding: 0 12px;
   border: none;
+  border-radius: 7px;
   background: transparent;
   font-size: 12px;
   line-height: 18px;
   color: var(--dsw-alias-label-secondary);
   cursor: pointer;
-  transition: background 0.15s ease, color 0.15s ease;
-}
-
-.seg + .seg {
-  border-left: 1px solid var(--dsw-alias-border-l2);
+  transition: background 0.18s ease, color 0.18s ease, box-shadow 0.18s ease;
 }
 
 .seg:hover {
   background: var(--dsw-alias-interactive-bg-hover);
+  color: var(--dsw-alias-label-primary);
 }
 
 .active {
   background: var(--dsw-alias-state-business-tertiary);
   color: var(--dsw-alias-state-business-primary);
+  font-weight: 500;
+  box-shadow: inset 0 0 0 1px var(--dsw-alias-state-business-primary);
 }
 
 .active:hover {
   background: var(--dsw-alias-state-business-tertiary);
+  color: var(--dsw-alias-state-business-primary);
 }

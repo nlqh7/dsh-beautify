@@ -331,7 +331,13 @@ export function initWhaleCursor(
     imageReady = true
     setGate()
   }
-  const markError = (): void => { imageReady = false }
+  // A failed sprite load closes the gate immediately (native cursor back);
+  // without the re-evaluation the follower would stay hidden until the next
+  // pointermove while `cursor: none` was still active.
+  const markError = (): void => {
+    imageReady = false
+    setGate()
+  }
   img.addEventListener('load', markReady)
   img.addEventListener('error', markError)
   img.decode().then(markReady).catch((): void => {
@@ -397,6 +403,7 @@ export function initWhaleCursor(
       img.removeEventListener('error', markError)
       if (raf !== 0) cancelAnimationFrame(raf)
       root.removeAttribute(WHALE_CURSOR_ATTRIBUTE)
+      root.removeAttribute(WHALE_CURSOR_ATTRIBUTE + '-state')
       whale.remove()
       styleEl.remove()
     },

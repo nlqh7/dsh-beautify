@@ -23,14 +23,24 @@ export interface DreamSkinPalette {
   line: string
 }
 
-/** Convert a hex color to rgba with the given alpha; non-hex values pass through. */
+/**
+ * Convert a color to rgba with the given alpha. Accepts 6- and 8-digit hex and
+ * rgba()/rgb() strings — presets shipping rgba palettes (firefly 等) otherwise
+ * silently ignore the scrim-strength slider and derived-color mixing.
+ */
 function hexToRgba(color: string, alpha: number): string {
   const hex = /^#([0-9a-fA-F]{6})/.exec(color)?.[1]
-  if (hex === undefined) return color
-  const r = parseInt(hex.slice(0, 2), 16)
-  const g = parseInt(hex.slice(2, 4), 16)
-  const b = parseInt(hex.slice(4, 6), 16)
-  return `rgba(${r}, ${g}, ${b}, ${alpha})`
+  if (hex !== undefined) {
+    const r = parseInt(hex.slice(0, 2), 16)
+    const g = parseInt(hex.slice(2, 4), 16)
+    const b = parseInt(hex.slice(4, 6), 16)
+    return `rgba(${r}, ${g}, ${b}, ${alpha})`
+  }
+  const rgb = /^rgba?\(\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)/.exec(color)
+  if (rgb !== null) {
+    return `rgba(${rgb[1]}, ${rgb[2]}, ${rgb[3]}, ${alpha})`
+  }
+  return color
 }
 
 /** Per-wallpaper user tweaks overriding a preset's shipped defaults. */

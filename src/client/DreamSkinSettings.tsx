@@ -91,7 +91,7 @@ function WallpaperEngineBlock() {
     loaded: boolean
     wallpaperBlur: number
     scrim: number
-    inventory: { wallpapers: Array<{ id: string; title: string; playable: boolean; preview: string | null }>; error: unknown }
+    inventory: { wallpapers: Array<{ id: string; title: string; playable: boolean; preview: string | null }>; error: string | null }
   }
   const [open, setOpen] = useState(false)
   const wallpapers = Array.isArray(sel.inventory.wallpapers) ? sel.inventory.wallpapers.filter(w => w.playable) : []
@@ -116,7 +116,7 @@ function WallpaperEngineBlock() {
       </button>
       <Modal open={open} title="壁纸引擎" onClose={() => { setOpen(false) }} className={css.pickerModal}>
         {sel.inventory.error
-          ? <div className={css.hint}>{String(sel.inventory.error)}</div>
+          ? <div className={css.hint}>{sel.inventory.error}</div>
           : !sel.loaded
             ? <div className={css.hint}>扫描中…</div>
             : (
@@ -138,7 +138,7 @@ function WallpaperEngineBlock() {
                     </button>
                   ))}
                 </div>
-                <Button onClick={() => { loadInventory() }}>刷新</Button>
+                <Button onClick={() => { void loadInventory() }}>刷新</Button>
               </>
             )}
       </Modal>
@@ -256,13 +256,19 @@ function CursorUploadRow({
   const [dataUrl, setDataUrl] = useState<string | null>(() => readCursorUploads()[state] ?? null)
   const pick = (event: ChangeEvent<HTMLInputElement>): void => {
     const file = event.target.files?.[0]
+    // Reset the input value first: a unchanged value never re-fires `change`,
+    // so re-picking the same file (or re-adding it after a remove) would be a
+    // silent no-op.
+    event.target.value = ''
     if (!file) return
     const reader = new FileReader()
     reader.onload = () => {
-      const url = String(reader.result)
+      if (typeof reader.result !== 'string') return
+      const url = reader.result
       setDataUrl(url)
       onSave(state, url)
     }
+    reader.onerror = () => {}
     reader.readAsDataURL(file)
   }
   const remove = (): void => {
@@ -287,7 +293,8 @@ function CursorUploadRow({
 }
 
 export function DreamSkinSettings({
-  useStore, presets, select, saveCustomTheme, tweak, resetTweak: resetTweakFn, setCursorEnabled, setCursorSkin, setCursorSize, saveCursorUpload, setCursorStateOverride,
+  useStore, presets, select, saveCustomTheme, tweak, resetTweak: resetTweakFn,
+  setCursorEnabled, setCursorSkin, setCursorSize, saveCursorUpload, setCursorStateOverride,
 }: DreamSkinSettingsProps) {
   const preference = useStore(s => s.preference)
   const cursorEnabled = useStore(s => s.cursorEnabled)
@@ -313,6 +320,10 @@ export function DreamSkinSettings({
     : Object.entries(featureStatus).filter(([, s]) => !s.ok)
   const [showParams, setShowParams] = useState(false)
   const [showCursor, setShowCursor] = useState(false)
+  const [showWhaleSkin, setShowWhaleSkin] = useState(false)
+  const [whaleSkin, setWhaleSkin] = useState<'dsniang' | 'dafeiyu'>(() => {
+    try { return localStorage.getItem('dsh-beautify:whaleSkin') === 'dafeiyu' ? 'dafeiyu' : 'dsniang' } catch { return 'dsniang' }
+  })
   // 液态玻璃皮肤（vendored 自 liquid-glass-theme）：独立 localStorage + 窗口事件，
   // 与 apply 里的 initLiquidGlass 联动（不经过主题 store）。档位：off/lite/standard/ultra
   const [lgLevel, setLgLevel] = useState<'off' | 'lite' | 'standard' | 'ultra'>(() => {
@@ -322,6 +333,21 @@ export function DreamSkinSettings({
       return 'off'
     } catch { return 'off' }
   })
+  // Single-knob liquid-glass tweaks (persisted via the settings event in apply).
+  const [lgTweaks, setLgTweaks] = useState<{ fpsCap: number; l1Blur: number; modalBlur: number }>(() => {
+    try {
+      const raw = JSON.parse(localStorage.getItem('dsh.ui-liquid-glass.settings') || '{}') as Partial<{ fpsCap: number; l1Blur: number; modalBlur: number }>
+      return {
+        fpsCap: typeof raw.fpsCap === 'number' && raw.fpsCap >= 12 && raw.fpsCap <= 60 ? Math.round(raw.fpsCap) : 30,
+        l1Blur: typeof raw.l1Blur === 'number' ? raw.l1Blur : 10,
+        modalBlur: typeof raw.modalBlur === 'number' ? raw.modalBlur : 8,
+      }
+    } catch { return { fpsCap: 30, l1Blur: 10, modalBlur: 8 } }
+  })
+  const patchLiquidGlass = (partial: Partial<{ fpsCap: number; l1Blur: number; modalBlur: number }>): void => {
+    setLgTweaks(t => ({ ...t, ...partial }))
+    try { window.dispatchEvent(new CustomEvent('dsh:liquid-glass-settings', { detail: partial })) } catch { /* noop */ }
+  }
   const toggleLiquidGlass = (level: 'off' | 'lite' | 'standard' | 'ultra'): void => {
     setLgLevel(level)
     try { localStorage.setItem('dsh-beautify:liquidGlass', level) } catch { /* noop */ }
@@ -414,7 +440,7 @@ export function DreamSkinSettings({
                     { id: 'whale', label: '鲸鱼' },
                     { id: 'custom', label: '自定义' },
                   ]}
-                  onSelect={(id) => { setCursorSkin(id as CursorSkinId) }}
+                  onSelect={(id) => { setCursorSkin(id) }}
                 />
                 <div className={css.paramGroup}>
                   <div className={css.paramGroupTitle}>大小</div>
@@ -461,6 +487,42 @@ export function DreamSkinSettings({
         <button
           type="button"
           className={css.groupHeader}
+          aria-expanded={showWhaleSkin}
+          onClick={() => { setShowWhaleSkin(v => !v) }}
+        >
+          <span className={css.groupHeaderText}>鲸鱼挂件</span>
+          <span className={css.groupHeaderActions}>
+            <span className={css.groupCount}>{whaleSkin === 'dafeiyu' ? '大肥鱼' : '经典鲸鱼'}</span>
+            <span className={showWhaleSkin ? `${css.chevron} ${css.chevronOpen}` : css.chevron} aria-hidden="true">▾</span>
+          </span>
+        </button>
+        <div className={css.collapse} data-open={showWhaleSkin}>
+          <div className={css.collapseInner}>
+            <Segmented
+              label="挂件形象"
+              value={whaleSkin}
+              options={[
+                { id: 'dsniang', label: '经典鲸鱼' },
+                { id: 'dafeiyu', label: '大肥鱼' },
+              ]}
+              onSelect={(id) => {
+                setWhaleSkin(id)
+                try {
+                  localStorage.setItem('dsh-beautify:whaleSkin', id)
+                  window.dispatchEvent(new CustomEvent('dshw-skin-change', { detail: id }))
+                } catch { /* storage unavailable — in-memory only */ }
+              }}
+            />
+            <p className={css.hint}>
+              经典鲸鱼：余额气泡立绘，摸头有音效；大肥鱼：GIF 动画形象，摸头会脸红、摸多了生气鼓鼓（素材来自 B 站 UP 主赤风RED）。
+            </p>
+          </div>
+        </div>
+      </div>
+      <div className={css.section}>
+        <button
+          type="button"
+          className={css.groupHeader}
           aria-expanded={showParams}
           onClick={() => { setShowParams(v => !v) }}
         >
@@ -483,27 +545,58 @@ export function DreamSkinSettings({
                   { id: 'standard', label: '标准' },
                   { id: 'ultra', label: '极致' },
                 ]}
-                onSelect={(id) => { toggleLiquidGlass(id as 'off' | 'lite' | 'standard' | 'ultra') }}
+                onSelect={(id) => { toggleLiquidGlass(id) }}
               />
+              {lgLevel === 'standard' && (
+                <Segmented
+                  label="最高帧率"
+                  value={String(lgTweaks.fpsCap)}
+                  options={[
+                    { id: '24', label: '省电 24' },
+                    { id: '30', label: '流畅 30' },
+                    { id: '60', label: '丝滑 60' },
+                  ]}
+                  onSelect={(id) => { patchLiquidGlass({ fpsCap: Number(id) }) }}
+                />
+              )}
+              {lgLevel !== 'off' && lgLevel !== 'lite' && (
+                <>
+                  <Knob label="基底毛玻璃" value={lgTweaks.l1Blur} min={0} max={30} step={1} unit="px" onChange={(v) => { patchLiquidGlass({ l1Blur: v }) }} />
+                  <Knob label="弹窗毛玻璃" value={lgTweaks.modalBlur} min={0} max={40} step={1} unit="px" onChange={(v) => { patchLiquidGlass({ modalBlur: v }) }} />
+                </>
+              )}
               <p className={css.hint}>
                 WebGL 物理透镜 + 多层毛玻璃（溶入自 liquid-glass-theme，MIT）。
-                <br />「档位」：<b>轻量</b>=纯毛玻璃、不跑 WebGL（低配/集显推荐，几乎不卡）；<b>标准</b>=半分辨率透镜 + 30fps；<b>极致</b>=全效果 + 60fps（仅独立显卡）。
-                <br />「问题」：标准/极致在低配或集成显卡上仍可能明显掉帧；浏览器禁用 WebGL 时轻量档照常、其余档无透镜效果。
+                <br />「档位」：<b>轻量</b>=纯毛玻璃、不跑 WebGL（低配/集显推荐，几乎不卡）；<b>标准</b>=半分辨率透镜（帧率可调）；<b>极致</b>=全效果 + 60fps（仅独立显卡）。
+                <br />卡顿先降到「轻量」或把「最高帧率」调到 24——档位切换会重置毛玻璃细调。
               </p>
             </div>
             <div className={css.paramGroup}>
-              <div className={css.paramGroupTitle}>壁纸</div>
-              <Knob label="壁纸模糊" value={wallpaper.blur} min={0} max={60} step={1} unit="px" onChange={(v) => { onWallpaper({ blur: v }) }} />
-              <Knob label="焦点 · 左右" value={wallpaper.focusX >= 0 ? wallpaper.focusX : (activePreset?.wallpaper?.focusX ?? 0.5)} min={0} max={1} step={0.01} onChange={(v) => { onWallpaper({ focusX: v }) }} />
-              <Knob label="焦点 · 上下" value={wallpaper.focusY >= 0 ? wallpaper.focusY : (activePreset?.wallpaper?.focusY ?? 0.5)} min={0} max={1} step={0.01} onChange={(v) => { onWallpaper({ focusY: v }) }} />
-              <Knob label="暗化" value={wallpaper.scrim >= 0 ? wallpaper.scrim : DEFAULT_SCRIM_STRENGTH} min={0} max={1} step={0.01} onChange={(v) => { onWallpaper({ scrim: v }) }} />
+              <div className={css.paramGroupTitle}>壁纸（当前来源：{weActive ? '壁纸引擎' : '主题'}）</div>
+              <Knob
+                label="壁纸模糊"
+                value={weActive ? Number(sel.wallpaperBlur) : wallpaper.blur}
+                min={0} max={60} step={1} unit="px"
+                onChange={(v) => { onWallpaper({ blur: v }) }}
+              />
+              <Knob label="焦点 · 左右" value={wallpaper.focusX >= 0 ? wallpaper.focusX : (activePreset?.wallpaper?.focusX ?? 0.5)} min={0} max={1} step={0.01} onChange={(v) => { onWallpaper({ focusX: v }) }} disabled={weActive} />
+              <Knob label="焦点 · 上下" value={wallpaper.focusY >= 0 ? wallpaper.focusY : (activePreset?.wallpaper?.focusY ?? 0.5)} min={0} max={1} step={0.01} onChange={(v) => { onWallpaper({ focusY: v }) }} disabled={weActive} />
+              <Knob
+                label="暗化"
+                value={weActive ? Number(sel.scrim) : (wallpaper.scrim >= 0 ? wallpaper.scrim : DEFAULT_SCRIM_STRENGTH)}
+                min={0} max={1} step={0.01}
+                onChange={(v) => { onWallpaper({ scrim: v }) }}
+              />
             </div>
             <div className={css.paramGroup}>
               <div className={css.paramGroupTitle}>玻璃</div>
               <Knob label="玻璃模糊" value={glass.blur} min={0} max={40} step={1} unit="px" onChange={(v) => { setGlass('blur', v) }} />
-              <Knob label="玻璃高光" value={glass.highlight} min={0} max={0.8} step={0.01} onChange={(v) => { setGlass('highlight', v) }} />
-              <Knob label="玻璃饱和度" value={glass.saturate} min={1} max={3} step={0.05} onChange={(v) => { setGlass('saturate', v) }} />
-              <Knob label="边框（壁纸引擎）" value={glass.border} min={0} max={1} step={0.01} onChange={(v) => { setGlass('border', v) }} disabled={!weActive} />
+              <Knob label="玻璃高光" value={glass.highlight} min={0} max={0.8} step={0.01} onChange={(v) => { setGlass('highlight', v) }} disabled={glass.blur <= 0} />
+              <Knob label="玻璃饱和度" value={glass.saturate} min={1} max={3} step={0.05} onChange={(v) => { setGlass('saturate', v) }} disabled={glass.blur <= 0} />
+              <Knob label="玻璃边框" value={glass.border} min={0} max={1} step={0.01} onChange={(v) => { setGlass('border', v) }} disabled={glass.blur <= 0} />
+              {glass.blur <= 0 && (
+                <p className={css.hint}>玻璃模糊为 0 时整组玻璃效果关闭——先调「玻璃模糊」，高光 / 饱和度 / 边框才会生效。</p>
+              )}
             </div>
             <div className={css.paramGroup}>
               <div className={css.paramGroupTitle}>自定义主题</div>
@@ -557,7 +650,7 @@ export function DreamSkinSettings({
                   </label>
                 </div>
               )}
-              <Button onClick={() => { saveCustomTheme(custom) }}>应用自定义主题</Button>
+              <Button variant="primary" onClick={() => { saveCustomTheme(custom) }}>应用自定义主题</Button>
             </div>
             <Button onClick={resetTweakFn}>恢复壁纸参数默认</Button>
           </div>

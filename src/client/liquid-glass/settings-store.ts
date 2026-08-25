@@ -32,6 +32,8 @@ export interface LiquidGlassSettings {
   lite?: boolean
   /** 极致档：恢复全效果（1x 渲染、60fps、开水波），仅推荐独立显卡。 */
   ultra?: boolean
+  /** 标准档帧率上限（帧/秒）；ultra 固定 60，lite 不适用。默认 30。 */
+  fpsCap?: number
 }
 
 /** 液态玻璃档位：off(关闭) / lite(轻量·纯毛玻璃) / standard(标准·降级透镜) / ultra(极致·全效果) */
@@ -92,6 +94,7 @@ export const LIQUID_GLASS_DEFAULTS: LiquidGlassSettings = {
   bgLiquidScale: 0.3,
   bgLiquidSpeed: 0.06,
   bgLiquidDispersion: 0.02,
+  fpsCap: 30,
 }
 
 export const USER_PRESET_KEY = 'dsh.ui-liquid-glass.user_preset'

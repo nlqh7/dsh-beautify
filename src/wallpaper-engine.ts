@@ -295,7 +295,22 @@ export function registerWallpaperEngine(ctx) {
     return token;
   };
 
-  // Build the inventory once; the browser half refetches live each load.
+  // Build the inventory with a short TTL cache: one scan walks every workshop
+  // directory and spawns reg.exe twice, all synchronous — without the cache
+  // each picker open would freeze the whole HTTP event loop (chat SSE included)
+  // for the duration. The picker's refresh button still gets fresh data within
+  // one TTL at worst.
+  const INVENTORY_TTL_MS = 30000;
+  let inventoryCache = null;
+  let inventoryCacheAt = 0;
+  function getInventory() {
+    const now = Date.now();
+    if (inventoryCache && now - inventoryCacheAt < INVENTORY_TTL_MS) return inventoryCache;
+    inventoryCache = buildInventory();
+    inventoryCacheAt = now;
+    return inventoryCache;
+  }
+
   function buildInventory() {
     const installDir = locateWallpaperEngine();
     const libraryDirs = owningLibraries();
@@ -358,7 +373,7 @@ export function registerWallpaperEngine(ctx) {
     path: `${BASE}/inventory`,
     handler: (req, res) => {
       try {
-        const payload = JSON.stringify(buildInventory());
+        const payload = JSON.stringify(getInventory());
         res.setHeader('Content-Type', 'application/json; charset=utf-8');
         res.setHeader('Cache-Control', 'no-store');
         res.end(payload);
@@ -371,21 +386,52 @@ export function registerWallpaperEngine(ctx) {
   }));
 
   // 2/3. Media + preview (stream, with Range support for `<video>` seeking).
+  // Stream errors MUST be handled: `pipe()` does not forward source errors, and
+  // an unhandled 'error' on a Readable escapes as an uncaughtException that
+  // kills the whole host process (real case: the workshop item gets unsubscribed
+  // between existsSync and createReadStream → async ENOENT; or the resolved
+  // path is a directory → async EISDIR). Aborted requests (video seeking) are
+  // torn down on res 'close' so the fd does not linger until EOF.
+  function streamToRes(absPath, opts, res) {
+    const stream = createReadStream(absPath, opts);
+    stream.on('error', (err) => {
+      try { res.destroy(); } catch { /* already gone */ }
+      console.warn('[wallpaper-engine] read failed:', String(err && err.message ? err.message : err), absPath);
+    });
+    res.on('close', () => { try { stream.destroy(); } catch { /* already ended */ } });
+    stream.pipe(res);
+  }
+
   function serveFile(absPath, req, res) {
     if (!absPath || !existsSync(absPath)) {
       res.statusCode = 404; res.end('not found'); return;
     }
-    const st = statSync(absPath);
+    let st; try { st = statSync(absPath); } catch { res.statusCode = 404; res.end('not found'); return; }
+    if (!st.isFile()) { res.statusCode = 404; res.end('not found'); return; }
     res.setHeader('Content-Type', mimeFor(absPath));
     res.setHeader('Accept-Ranges', 'bytes');
     const range = req.headers.range;
-    if (range) {
-      const m = /bytes=(\d*)-(\d*)/.exec(range);
-      let start = m && m[1] ? parseInt(m[1], 10) : 0;
-      let end = m && m[2] ? parseInt(m[2], 10) : st.size - 1;
+    const m = range ? /bytes=(\d*)-(\d*)/.exec(range) : null;
+    if (range && m) {
+      let start;
+      let end;
+      if (m[1] === '' && m[2] !== '') {
+        // Suffix form `bytes=-N`: the LAST N bytes (RFC 7233), not the first.
+        const n = parseInt(m[2], 10);
+        if (!(n > 0) || n >= st.size) {
+          res.statusCode = 416;
+          res.setHeader('Content-Range', `bytes */${st.size}`);
+          res.end(); return;
+        }
+        start = st.size - n;
+        end = st.size - 1;
+      } else {
+        start = m[1] ? parseInt(m[1], 10) : 0;
+        end = m[2] ? Math.min(parseInt(m[2], 10), st.size - 1) : st.size - 1;
+      }
       if (Number.isNaN(start)) start = 0;
       if (Number.isNaN(end) || end >= st.size) end = st.size - 1;
-      if (start > end) {
+      if (start > end || start >= st.size) {
         res.statusCode = 416;
         res.setHeader('Content-Range', `bytes */${st.size}`);
         res.end(); return;
@@ -393,11 +439,12 @@ export function registerWallpaperEngine(ctx) {
       res.statusCode = 206;
       res.setHeader('Content-Range', `bytes ${start}-${end}/${st.size}`);
       res.setHeader('Content-Length', String(end - start + 1));
-      createReadStream(absPath, { start, end }).pipe(res);
+      streamToRes(absPath, { start, end }, res);
       return;
     }
+    // Malformed Range (regex miss) falls through: serve the whole file as 200.
     res.setHeader('Content-Length', String(st.size));
-    createReadStream(absPath).pipe(res);
+    streamToRes(absPath, null, res);
   }
 
   // Resolve a media request to an absolute file path.
@@ -434,7 +481,10 @@ export function registerWallpaperEngine(ctx) {
     }
     const base = normalize(resolve(dir));
     const norm = normalize(target);
-    if (norm === base || norm.toLowerCase().startsWith(base.toLowerCase() + '\\')) return norm;
+    // The directory itself is never served (only its entry file via the empty
+    // <rel> branch above); `rel='.'`-style requests resolve back to `base`.
+    if (norm === base) return null;
+    if (norm.toLowerCase().startsWith(base.toLowerCase() + '\\')) return norm;
     return null;
   }
 
@@ -454,5 +504,6 @@ export function registerWallpaperEngine(ctx) {
   return () => {
     for (const d of disposers) { try { d(); } catch { /* ignore */ } }
     mediaMap.clear();
+    inventoryCache = null;
   };
 }

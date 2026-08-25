@@ -11,8 +11,15 @@
 .mask {
   position: absolute;
   inset: 0;
-  background: rgba(0, 0, 0, 0.45);
-  backdrop-filter: blur(2px);
+  background: rgba(0, 0, 0, 0.5);
+  backdrop-filter: blur(8px) saturate(1.2);
+  -webkit-backdrop-filter: blur(8px) saturate(1.2);
+  animation: mask-in 0.2s ease;
+}
+
+@keyframes mask-in {
+  from { opacity: 0; }
+  to { opacity: 1; }
 }
 
 .dialog {
@@ -21,11 +28,32 @@
   flex-direction: column;
   width: min(680px, 92vw);
   max-height: 85vh;
-  border-radius: 12px;
+  border-radius: 14px;
   border: 1px solid var(--dsw-alias-border-l1);
   background: var(--dsw-alias-bg-overlay);
-  box-shadow: 0 16px 48px rgba(0, 0, 0, 0.4);
+  box-shadow:
+    0 24px 64px rgba(0, 0, 0, 0.4),
+    0 4px 16px rgba(0, 0, 0, 0.2);
   overflow: hidden;
+  animation: dialog-in 0.22s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes dialog-in {
+  from {
+    opacity: 0;
+    transform: scale(0.96) translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .mask,
+  .dialog {
+    animation: none;
+  }
 }
 
 .header {
@@ -33,15 +61,17 @@
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  padding: 12px 16px;
+  padding: 14px 18px;
   border-bottom: 1px solid var(--dsw-alias-border-l1);
   flex: none;
+  background: linear-gradient(180deg, var(--dsw-alias-bg-layer-1), transparent);
 }
 
 .title {
   margin: 0;
   font-size: 14px;
   font-weight: 600;
+  letter-spacing: 0.02em;
   color: var(--dsw-alias-label-primary);
 }
 
@@ -52,20 +82,36 @@
   width: 26px;
   height: 26px;
   border: none;
-  border-radius: 6px;
+  border-radius: 50%;
   background: transparent;
   color: var(--dsw-alias-label-secondary);
   font-size: 12px;
   cursor: pointer;
-  transition: background 0.15s ease;
+  transition: background 0.15s ease, color 0.15s ease, transform 0.15s ease;
 }
 
 .close:hover {
   background: var(--dsw-alias-interactive-bg-hover);
   color: var(--dsw-alias-label-primary);
+  transform: rotate(90deg);
 }
 
 .body {
-  padding: 16px;
+  padding: 16px 18px;
   overflow-y: auto;
+  scrollbar-width: thin;
+  scrollbar-color: var(--dsw-alias-border-l2) transparent;
+}
+
+.body::-webkit-scrollbar {
+  width: 8px;
+}
+
+.body::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+  background: var(--dsw-alias-border-l2);
+}
+
+.body::-webkit-scrollbar-track {
+  background: transparent;
 }

@@ -1,7 +1,7 @@
-{
+﻿{
   "name": "@nlqh/dsh-beautify",
   "description": "Dream Skin themes + whale cursor + settings performance + balance whale pet for DeepSeek Harness",
-  "version": "0.2.1",
+  "version": "0.3.0",
   "publishConfig": {
     "access": "public"
   },

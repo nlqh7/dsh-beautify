@@ -11,7 +11,7 @@ export interface ButtonProps {
     /** Toggle/pressed state (aria-pressed). */
     selected?: boolean;
     /** Visual emphasis; `ghost` is the plain low-emphasis variant. */
-    variant?: 'default' | 'ghost';
+    variant?: 'default' | 'ghost' | 'primary';
     /** Extra class appended after the module class. */
     className?: string;
 }

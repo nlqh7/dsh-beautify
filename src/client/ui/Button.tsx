@@ -13,7 +13,7 @@ export interface ButtonProps {
   /** Toggle/pressed state (aria-pressed). */
   selected?: boolean
   /** Visual emphasis; `ghost` is the plain low-emphasis variant. */
-  variant?: 'default' | 'ghost'
+  variant?: 'default' | 'ghost' | 'primary'
   /** Extra class appended after the module class. */
   className?: string
 }
@@ -27,6 +27,7 @@ export function Button({ children, onClick, selected, variant = 'default', class
   const cls = [
     css.button,
     variant === 'ghost' ? css.ghost : '',
+    variant === 'primary' ? css.primary : '',
     selected === true ? css.selected : '',
     className ?? '',
   ].filter(Boolean).join(' ')

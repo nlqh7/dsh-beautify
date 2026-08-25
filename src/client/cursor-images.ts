@@ -68,28 +68,14 @@ export const CURSOR_STATES: Record<string, CursorState> = {
   },
 }
 /**
- * User-authored cursor skin. Replace each `image` below with your own 48px
- * transparent PNG as a data URI (the `default` state must be a pointer arrow;
- * the pendant/decoration can vary per state). `hotX`/`hotY` are the pointer
- * tip coordinates from the image top-left.
- *
- * To author a skin: export the PNGs (48x48 recommended, transparent), base64
- * them (e.g. `base64 -w0 default.png`), and paste each into the matching
- * state. The `link`/`text`/`busy`/`not-allowed` variants only need the base
- * art swapped — the runtime swaps per hovered element.
+ * User-authored cursor skin. The shipped art is the built-in whale sprite:
+ * states the user has not uploaded keep rendering the whale (an invalid
+ * placeholder data URI here would fail the img load, flip the follower's
+ * error gate, and silently revert the whole custom skin to the OS cursor).
+ * Runtime uploads overlay per-state data URLs from localStorage
+ * ({@link readCursorUploads}); the merged skin never mutates either base map.
  */
-export const CUSTOM_CURSOR_STATES: Record<string, CursorState> = {
-  'default': { ...CURSOR_STATES['default'], image: 'data:image/png;base64,REPLACE_WITH_YOUR_DEFAULT_PNG', hotX: 2, hotY: 1 },
-  'busy': { ...CURSOR_STATES['busy'], image: 'data:image/png;base64,REPLACE_WITH_YOUR_BUSY_PNG', hotX: 2, hotY: 1 },
-  'not-allowed': { ...CURSOR_STATES['not-allowed'], image: 'data:image/png;base64,REPLACE_WITH_YOUR_NOT_ALLOWED_PNG', hotX: 1, hotY: 0 },
-  'text': { ...CURSOR_STATES['text'], image: 'data:image/png;base64,REPLACE_WITH_YOUR_TEXT_PNG', hotX: 2, hotY: 1 },
-  'precision': { ...CURSOR_STATES['precision'], image: 'data:image/png;base64,REPLACE_WITH_YOUR_PRECISION_PNG', hotX: 3, hotY: 2 },
-  'background': { ...CURSOR_STATES['background'], image: 'data:image/png;base64,REPLACE_WITH_YOUR_BACKGROUND_PNG', hotX: 2, hotY: 1 },
-  'pen': { ...CURSOR_STATES['pen'], image: 'data:image/png;base64,REPLACE_WITH_YOUR_PEN_PNG', hotX: 2, hotY: 1 },
-  'help': { ...CURSOR_STATES['help'], image: 'data:image/png;base64,REPLACE_WITH_YOUR_HELP_PNG', hotX: 3, hotY: 2 },
-  'link': { ...CURSOR_STATES['link'], image: 'data:image/png;base64,REPLACE_WITH_YOUR_LINK_PNG', hotX: 2, hotY: 1 },
-  'drag': { ...CURSOR_STATES['drag'], image: 'data:image/png;base64,REPLACE_WITH_YOUR_DRAG_PNG', hotX: 2, hotY: 1 },
-}
+export const CUSTOM_CURSOR_STATES: Record<string, CursorState> = { ...CURSOR_STATES }
 
 /** All selectable cursor skins keyed by {@link CursorSkinId}. */
 export const CURSOR_SKINS: Record<CursorSkinId, Record<string, CursorState>> = {

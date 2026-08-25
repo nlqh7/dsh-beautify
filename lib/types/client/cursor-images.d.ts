@@ -12,15 +12,12 @@ export type CursorSkinId = 'whale' | 'custom';
 /** Every custom cursor state keyed by its trigger (the built-in whale skin). */
 export declare const CURSOR_STATES: Record<string, CursorState>;
 /**
- * User-authored cursor skin. Replace each `image` below with your own 48px
- * transparent PNG as a data URI (the `default` state must be a pointer arrow;
- * the pendant/decoration can vary per state). `hotX`/`hotY` are the pointer
- * tip coordinates from the image top-left.
- *
- * To author a skin: export the PNGs (48x48 recommended, transparent), base64
- * them (e.g. `base64 -w0 default.png`), and paste each into the matching
- * state. The `link`/`text`/`busy`/`not-allowed` variants only need the base
- * art swapped — the runtime swaps per hovered element.
+ * User-authored cursor skin. The shipped art is the built-in whale sprite:
+ * states the user has not uploaded keep rendering the whale (an invalid
+ * placeholder data URI here would fail the img load, flip the follower's
+ * error gate, and silently revert the whole custom skin to the OS cursor).
+ * Runtime uploads overlay per-state data URLs from localStorage
+ * ({@link readCursorUploads}); the merged skin never mutates either base map.
  */
 export declare const CUSTOM_CURSOR_STATES: Record<string, CursorState>;
 /** All selectable cursor skins keyed by {@link CursorSkinId}. */

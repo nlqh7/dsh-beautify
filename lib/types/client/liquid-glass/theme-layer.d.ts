@@ -15,6 +15,8 @@ export declare class LiquidGlassLayer {
     private seamDisposer;
     private readonly ctx;
     private saveDebounceTimer;
+    private popoverBlurRaf;
+    private disposed;
     constructor(ctx: Context);
     private initBootSequence;
     private hydrateSettingsFromDisk;

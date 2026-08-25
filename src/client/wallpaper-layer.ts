@@ -178,12 +178,9 @@ export async function loadInventory() {
 
   // inventory 拉取失败（WE 后端没启动/网络断了/等）时不要清空已持久化的选择
   // —— 否则用户重启页面或开关液态玻璃时，已选的壁纸会被丢掉，"WE 持久化"失效。
-  // 仅在**成功拿到清单且里面真的没有**时才清 selection.id。
+  // 这里也绝不能 applySelection：空清单里 find 不到 id 会把 url/type 置空，
+  // 正在显示的壁纸会被当场拆掉。保留显示层不动，只刷新错误提示。
   if (selection.inventory.error) {
-    if (selection.id) {
-      // 保留原选择，UI 显示"后端未连接"提示即可；下次 init 成功时再校验。
-      applySelection(selection.id);
-    }
     emit();
     return;
   }
@@ -436,7 +433,7 @@ const WALLPAPER_KEY = 'dsh-beautify:wallpaper';
 const WALLPAPER_DEFAULTS = { blur: 0, focusX: -1, focusY: -1, scrim: -1 };
 
 /** Read the global wallpaper knobs; malformed or missing data yields the defaults. */
-export function readWallpaper() {
+export function readWallpaper(): { blur: number; focusX: number; focusY: number; scrim: number } {
   try {
     const raw = JSON.parse(localStorage.getItem(WALLPAPER_KEY) || 'null');
     if (raw === null || typeof raw !== 'object' || Array.isArray(raw)) return { ...WALLPAPER_DEFAULTS };
@@ -487,13 +484,24 @@ function buildMedia(sel) {
   return media;
 }
 
+// Removing a media element from the DOM does not stop it: the decoder keeps
+// running until GC. Pause + drop the source first so switching wallpapers
+// (rapidly, or back and forth) does not pile up live decoder contexts.
+function removeLayer(el) {
+  const v = el.querySelector("video");
+  if (v) {
+    try { v.pause(); v.removeAttribute("src"); v.load(); } catch { /* already gone */ }
+  }
+  el.remove();
+}
+
 function syncLayers() {
   // 1. Wallpaper element.
   const existing = document.getElementById(LAYER_ID);
   if (selection.url) {
     const wantKey = selection.type + "\u0000" + selection.url;
     const gotKey = existing && existing.dataset.weKey;
-    if (existing && gotKey !== wantKey) existing.remove();
+    if (existing && gotKey !== wantKey) removeLayer(existing);
     let node = document.getElementById(LAYER_ID);
     if (!node) {
       node = document.createElement("div");
@@ -509,7 +517,7 @@ function syncLayers() {
       else video.pause();
     }
   } else if (existing) {
-    existing.remove();
+    removeLayer(existing);
   }
 
   // 2. Scrim element (always present while a wallpaper is active).
@@ -570,6 +578,13 @@ function suspendMaidTheme() {
   maidWatch = new MutationObserver(() => {
     if (document.body.getAttribute(ACTIVE_ATTR) === "on"
       && document.body.hasAttribute(MAID_ATTR)) {
+      // 主题系统在挂起期间（重新）断言了属性——典型场景：先开 WE 壁纸、
+      // 之后再选女仆皮肤。删除前必须先补 stash，否则 restoreMaidTheme
+      // 无值可还原，关壁纸后皮肤永久丢失（直到刷新页面）。
+      const maid = document.body.getAttribute(MAID_ATTR);
+      if (maid !== null && !document.body.hasAttribute(MAID_STASH)) {
+        document.body.setAttribute(MAID_STASH, maid);
+      }
       document.body.removeAttribute(MAID_ATTR);
     }
   });
@@ -597,7 +612,7 @@ const GLASS_KEY = "dsh-beautify:glass";
 const GLASS_DEFAULTS = { blur: 0, saturate: 1.8, highlight: 0.3, border: 0.35 }; // 默认关闭毛玻璃（避免开机整片白雾）
 
 /** Read the global glass knobs; malformed or missing data yields the defaults. */
-export function readGlass() {
+export function readGlass(): { blur: number; saturate: number; highlight: number; border: number } {
   try {
     const raw = JSON.parse(localStorage.getItem(GLASS_KEY) || "null");
     if (raw === null) {
@@ -789,8 +804,6 @@ function WallpaperPicker() {
   // the visual feedback is instant even if a listener/emit path is lagging;
   // emit() additionally re-renders the picker's numeric readouts.
   const onScrim = (pct) => { selection.scrim = pct / 100; persistSelection(); applyEffects(); emit(); };
-  const onBorder = (pct) => { selection.border = pct / 100; persistSelection(); applyEffects(); emit(); };
-  const onBlur = (px) => { selection.blur = px; persistSelection(); applyEffects(); emit(); };
   const onWallpaperBlur = (px) => { selection.wallpaperBlur = px; persistSelection(); applyEffects(); emit(); };
 
   if (!sel.loaded) {
@@ -966,8 +979,9 @@ function WallpaperPicker() {
     sel.id && React.createElement(React.Fragment, null,
       SliderRow("壁纸模糊", 0, 60, 1, sel.wallpaperBlur, onWallpaperBlur, sel.wallpaperBlur + "px"),
       SliderRow("暗化", 0, 90, 5, Math.round(sel.scrim * 100), onScrim, Math.round(sel.scrim * 100) + "%"),
-      SliderRow("边框", 0, 90, 5, Math.round(sel.border * 100), onBorder, Math.round(sel.border * 100) + "%"),
-      SliderRow("玻璃", 0, 40, 1, sel.blur, onBlur, sel.blur + "px"),
+      // 边框/玻璃模糊是全局玻璃档位（readGlass/setGlass），由设置面板的
+      // 「美化参数 → 玻璃」Knob 驱动；这里曾放过两个只写 selection 字段、
+      // 无人消费的死滑块，已删。
     ),
     React.createElement("div", { className: "we-picker__row" },
       React.createElement("span", { className: "we-picker__hint" },
@@ -1301,12 +1315,21 @@ export function initWallpaperLayer(ctx) {
         unsubEffects();
         clearRotationTimer();
         const node = document.getElementById(LAYER_ID);
-        if (node) node.remove();
+        if (node) removeLayer(node);
         const scrim = document.getElementById(SCRIM_ID);
         if (scrim) scrim.remove();
         clearEffects();
         document.body.removeAttribute(ACTIVE_ATTR);
         restoreMaidTheme();
+        // 玻璃档位同样随 fiber 还原：属性、变量、注入的样式表一并拆掉，
+        // 否则插件卸载/HMR 后毛玻璃 backdrop-filter 残留（其余视觉都还原了）。
+        try { document.body.removeAttribute("data-ds-glass"); } catch {}
+        const gs = document.body.style;
+        for (const n of ["--we-blur", "--we-saturate", "--we-glass-highlight", "--we-glass-shadow", "--we-border-alpha"]) {
+          gs.removeProperty(n);
+        }
+        const glassStyle = document.querySelector("style[data-dsh-glass]");
+        if (glassStyle) glassStyle.remove();
       };
     });
   }

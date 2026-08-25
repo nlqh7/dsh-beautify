@@ -41,7 +41,11 @@ export function apply(ctx: Context): void {
   const status: Record<string, BeautifyFeatureStatus> = {}
 
   try {
-    registerWallpaperEngine(ctx)
+    const disposeWallpaper = registerWallpaperEngine(ctx)
+    // Registrations are effects: the route disposer must unwind with the fiber,
+    // or a plugin reload hits a duplicate-route error and the feature stays
+    // broken until the process restarts.
+    ctx.effect(() => disposeWallpaper)
     status.wallpaper = { ok: true }
   } catch (err) {
     status.wallpaper = { ok: false, reason: String((err as Error)?.message ?? err) }
@@ -66,7 +70,7 @@ export function apply(ctx: Context): void {
   try {
     const webServer = (ctx as { webServer?: { register?: (route: unknown) => unknown } }).webServer
     if (webServer?.register !== undefined) {
-      webServer.register({
+      const disposeStatus = webServer.register({
         kind: 'exact',
         path: '/dsh-beautify/status.json',
         handler: (_req: unknown, res: { writeHead: (code: number, headers: Record<string, string>) => void; end: (body: string) => void }) => {
@@ -74,6 +78,7 @@ export function apply(ctx: Context): void {
           res.end(JSON.stringify(status))
         },
       })
+      ctx.effect(() => disposeStatus as () => void)
     }
   } catch (err) {
     console.warn('[dsh-beautify] 状态接口注册失败:', err)

@@ -92,7 +92,7 @@ export declare function applySelection(id: any): void;
 export declare function setWeEffect(kind: any, value: any): void;
 /** Read the global wallpaper knobs; malformed or missing data yields the defaults. */
 export declare function readWallpaper(): {
-    blur: any;
+    blur: number;
     focusX: number;
     focusY: number;
     scrim: number;
@@ -103,10 +103,10 @@ export declare function setWallpaper(partial: any): void;
 export declare function toggleWePlay(): void;
 /** Read the global glass knobs; malformed or missing data yields the defaults. */
 export declare function readGlass(): {
-    blur: any;
-    saturate: any;
-    highlight: any;
-    border: any;
+    blur: number;
+    saturate: number;
+    highlight: number;
+    border: number;
 };
 /** Set one glass knob by kind: 'blur' | 'saturate' | 'highlight' | 'border'. */
 export declare function setGlass(kind: any, value: any): void;

@@ -1,5 +1,5 @@
-/* Knob: fixed-width label column, flex slider, number box + unit. Mirrors the
-   DeepSeek appearance-row recipe; every surface uses the alias tokens. */
+/* Knob: fixed-width label column, custom-drawn slider (fill track + thumb),
+   number box + unit. Every surface uses the alias tokens. */
 .knob {
   display: flex;
   align-items: center;
@@ -17,10 +17,75 @@
   text-overflow: ellipsis;
 }
 
+/* Custom range: a 4px rounded track whose left portion is filled with the
+   brand tint (via --fill, set from the current value) and a floating thumb
+   that lifts on hover. */
 .slider {
   flex: 1;
   min-width: 0;
-  accent-color: var(--dsw-alias-state-business-primary);
+  height: 18px;
+  appearance: none;
+  -webkit-appearance: none;
+  background: transparent;
+  cursor: pointer;
+}
+
+.slider::-webkit-slider-runnable-track {
+  height: 4px;
+  border-radius: 999px;
+  background:
+    linear-gradient(90deg, var(--dsw-alias-brand-primary) 0%, var(--dsw-alias-brand-primary) var(--fill, 0%),
+      var(--dsw-alias-border-l2) var(--fill, 0%), var(--dsw-alias-border-l2) 100%);
+}
+
+.slider::-webkit-slider-thumb {
+  -webkit-appearance: none;
+  width: 14px;
+  height: 14px;
+  margin-top: -5px;
+  border-radius: 50%;
+  background: var(--dsw-alias-bg-overlay);
+  border: 1.5px solid var(--dsw-alias-brand-primary);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.slider:hover::-webkit-slider-thumb {
+  transform: scale(1.15);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+}
+
+.slider:active::-webkit-slider-thumb {
+  transform: scale(1.05);
+}
+
+.slider:focus-visible {
+  outline: none;
+}
+
+.slider:focus-visible::-webkit-slider-thumb {
+  box-shadow: 0 0 0 4px var(--dsw-alias-interactive-bg-hover);
+}
+
+.slider::-moz-range-track {
+  height: 4px;
+  border-radius: 999px;
+  background: var(--dsw-alias-border-l2);
+}
+
+.slider::-moz-range-progress {
+  height: 4px;
+  border-radius: 999px;
+  background: var(--dsw-alias-brand-primary);
+}
+
+.slider::-moz-range-thumb {
+  width: 12px;
+  height: 12px;
+  border-radius: 50%;
+  background: var(--dsw-alias-bg-overlay);
+  border: 1.5px solid var(--dsw-alias-brand-primary);
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.25);
 }
 
 .numberWrap {
@@ -41,6 +106,17 @@
   line-height: 18px;
   color: var(--dsw-alias-label-primary);
   text-align: right;
+  transition: border-color 0.15s ease, background 0.15s ease;
+}
+
+.number:hover {
+  border-color: var(--dsw-alias-border-l2);
+  background: var(--dsw-alias-bg-layer-1);
+}
+
+.number:focus {
+  outline: none;
+  border-color: var(--dsw-alias-brand-primary);
 }
 
 .number::-webkit-outer-spin-button,
@@ -59,4 +135,8 @@
 
 .disabled {
   opacity: 0.45;
+}
+
+.disabled .slider {
+  cursor: not-allowed;
 }

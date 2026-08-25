@@ -203,11 +203,21 @@ export async function saveWallpaperStore(state: WallpaperStoreState): Promise<vo
   } catch {}
 }
 
+// In-flight loader promise: two concurrent callers (constructor sync + boot
+// hydration) must share one pass, or each mints its own set of object URLs and
+// the earlier set leaks.
+let storeLoadPromise: Promise<WallpaperStoreState> | null = null
+
 export async function loadWallpaperStore(): Promise<WallpaperStoreState> {
   if (memoryStoreCache) {
     return { ...memoryStoreCache }
   }
+  if (storeLoadPromise) return storeLoadPromise
+  storeLoadPromise = doLoadWallpaperStore().finally(() => { storeLoadPromise = null })
+  return storeLoadPromise
+}
 
+async function doLoadWallpaperStore(): Promise<WallpaperStoreState> {
   let customWallpapers: WallpaperItem[] = []
   let activeBuiltinId = BUILTIN_WALLPAPERS.find(w => w.id === 'builtin-6')?.id ?? BUILTIN_WALLPAPERS[0]?.id ?? 'builtin-1'
   let activeCustomId = ''

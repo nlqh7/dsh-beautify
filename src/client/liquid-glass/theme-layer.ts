@@ -82,6 +82,12 @@ function startChatFadeMaskDriver(): () => void {
       scroller = nextScroller
       if (scroller) scroller.addEventListener('scroll', onScroll, { passive: true })
     }
+    // Session switch rebuilds the view area: strip the !important mask from the
+    // old node, otherwise a reused node keeps content pinned outside the fade.
+    if (viewArea && viewArea !== nextViewArea) {
+      viewArea.style.removeProperty('-webkit-mask-image')
+      viewArea.style.removeProperty('mask-image')
+    }
     viewArea = nextViewArea
     if (scroller && viewArea) update()
   }
@@ -109,6 +115,11 @@ export class LiquidGlassLayer {
   private seamDisposer: (() => void) | undefined
   private readonly ctx: any
   private saveDebounceTimer: any = null
+  // Pending rAF for the coalesced popover blur scan.
+  private popoverBlurRaf = 0
+  // Set by dispose(); async boot continuations check it after every await so a
+  // teardown during hydration cannot resurrect the whole effect stack.
+  private disposed = false
 
   constructor(ctx: Context) {
     this.ctx = ctx
@@ -120,7 +131,9 @@ export class LiquidGlassLayer {
   private async initBootSequence(): Promise<void> {
     try {
       await this.hydrateSettingsFromDisk()
+      if (this.disposed) return
       await this.hydrateWallpaperOnBoot()
+      if (this.disposed) return
       if (this.enabled) {
         this.chatMaskDisposer?.()
     this.chatMaskDisposer = startChatFadeMaskDriver()
@@ -193,7 +206,8 @@ export class LiquidGlassLayer {
         }
       }
     } catch {
-      this.enabled = true
+      // Corrupted settings JSON: keep the enabled flag read above — resetting
+      // it to true here would override a user's explicit "off" on every boot.
     }
   }
 
@@ -294,6 +308,12 @@ export class LiquidGlassLayer {
     document.documentElement.setAttribute(LIQUID_GLASS_ATTRIBUTE, 'true')
     this.updateLayerCssVariables()
 
+    // 对话底部渐隐遮罩驱动：unmount() 会清掉它，而关→开（applyLevel 走
+    // 全量重建）只经过 mount()——不在这里重启的话，重开后渐隐永久丢失。
+    if (this.chatMaskDisposer === null || this.chatMaskDisposer === undefined) {
+      this.chatMaskDisposer = startChatFadeMaskDriver()
+    }
+
     // 1. 注入背景 DOM —— 轻量档(lite)跳过：不创建 canvas/背景层（毛玻璃全靠
     //    CSS 变量 + backdrop-filter 规则，不需要 WebGL 场景），杜绝任何 attach 时机问题
     if (this.settings.lite) {
@@ -318,7 +338,20 @@ export class LiquidGlassLayer {
 
     // 2.1 Radix Popover & Modal L3 毛玻璃注入
     this.applyPopoverBlur()
-    this.popoverObserver = new MutationObserver(() => { this.applyPopoverBlur() })
+    // mount() can run more than once (constructor sync + boot-sequence sync);
+    // the old body-subtree observer must be disconnected before replacement or
+    // every enable leaks one observer that keeps scanning the whole document.
+    this.popoverObserver?.disconnect()
+    // Coalesce bursts into one scan per frame: the selector list is wide
+    // ([class*="mask"] 等) and React commits several mutations per tick —
+    // scanning on every callback showed up as main-thread cost even in lite.
+    this.popoverObserver = new MutationObserver(() => {
+      if (this.popoverBlurRaf !== 0) return
+      this.popoverBlurRaf = requestAnimationFrame(() => {
+        this.popoverBlurRaf = 0
+        this.applyPopoverBlur()
+      })
+    })
     this.popoverObserver.observe(document.body, { childList: true, subtree: true })
 
     // 3. 注入 Design Token 覆盖栈
@@ -367,12 +400,18 @@ export class LiquidGlassLayer {
       this.popoverObserver.disconnect()
       this.popoverObserver = null
     }
+    if (this.popoverBlurRaf !== 0) {
+      cancelAnimationFrame(this.popoverBlurRaf)
+      this.popoverBlurRaf = 0
+    }
     for (const el of document.querySelectorAll<HTMLElement>('[data-dsh-popover-blurred]')) {
       el.style.removeProperty('backdrop-filter')
       el.style.removeProperty('-webkit-backdrop-filter')
       el.style.removeProperty('background')
-      el.style.removeProperty('border')
-      el.style.removeProperty('border-radius')
+      // Cleanup mirrors exactly what applyPopoverBlur set (background +
+      // backdrop filters); removing properties it never wrote (border /
+      // border-radius) would strip host inline styles on wide matches like
+      // [class*="mask"].
       delete el.dataset.dshPopoverBlurred
     }
     document.documentElement.removeAttribute(LIQUID_GLASS_ATTRIBUTE)
@@ -420,6 +459,7 @@ export class LiquidGlassLayer {
 
   /** Full teardown (used when the hosting plugin unloads). */
   public dispose(): void {
+    this.disposed = true
     this.enabled = false
     this.unmount()
     this.tokenDisposer?.()

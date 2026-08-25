@@ -21,7 +21,7 @@ import type { MaidSkinController } from './maid-skin.ts'
 import { initMaidAtelier } from './maid-atelier-skin.ts'
 import { initWhaleCursor } from './whale-cursor.ts'
 import { LiquidGlassLayer } from './liquid-glass/theme-layer.ts'
-import { LIQUID_GLASS_LEVELS, type LiquidGlassLevel } from './liquid-glass/settings-store.ts'
+import { LIQUID_GLASS_LEVELS, type LiquidGlassLevel, type LiquidGlassSettings } from './liquid-glass/settings-store.ts'
 import {
   readCursorUploads,
   writeCursorUploads,
@@ -191,9 +191,12 @@ function readPrefs(): StoredPrefs {
   }
 }
 
-/** Persist appearance prefs. */
+/** Persist appearance prefs. Quota/private-mode failures must not break the
+ * calling action chain (the in-memory state stays authoritative). */
 function writePrefs(prefs: StoredPrefs): void {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(prefs))
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(prefs))
+  } catch { /* storage full or blocked; keep the UI working unpersisted */ }
 }
 
 /** Build the custom-skin palette + wallpaper from the user's form. */
@@ -519,6 +522,7 @@ function applySkin(themeId: string, scrimStrength: number, custom?: CustomThemeI
 //   off(关闭) / lite(轻量·纯毛玻璃无 WebGL) / standard(标准·降级透镜) / ultra(极致·全效果)
 const LIQUID_GLASS_STORAGE_KEY = 'dsh-beautify:liquidGlass'
 const LIQUID_GLASS_TOGGLE_EVENT = 'dsh:liquid-glass-toggle'
+const LIQUID_GLASS_SETTINGS_EVENT = 'dsh:liquid-glass-settings'
 // 「先关了」标记：液态玻璃全屏 WebGL + 毛玻璃对低配/集显开销过大（曾卡死浏览器），
 // 本版本一次性强制关闭并清除开启残留（只生效一次），之后完全尊重用户显式设置。
 const LIQUID_GLASS_QUARANTINE_KEY = 'dsh-beautify:liquidGlassQuarantined'
@@ -565,9 +569,24 @@ function initLiquidGlass(ctx: ClientContext): () => void {
     try { localStorage.setItem(LIQUID_GLASS_STORAGE_KEY, next) } catch { /* noop */ }
     applyLevel(next)
   }
+  // Single-knob tweaks (fps cap / per-layer blur): merge into the persisted
+  // settings and hot-apply. Level presets intentionally overwrite l1/modalBlur
+  // (a level IS a preset); fpsCap is not part of any level so it survives
+  // level switches.
+  const onSettings = (e: Event): void => {
+    const detail = (e as CustomEvent<Partial<LiquidGlassSettings>>).detail
+    if (detail === undefined || detail === null) return
+    try {
+      const merged = { ...JSON.parse(localStorage.getItem('dsh.ui-liquid-glass.settings') || '{}'), ...detail }
+      localStorage.setItem('dsh.ui-liquid-glass.settings', JSON.stringify(merged))
+    } catch { /* noop */ }
+    layer?.updateSettings(detail)
+  }
   window.addEventListener(LIQUID_GLASS_TOGGLE_EVENT, onToggle)
+  window.addEventListener(LIQUID_GLASS_SETTINGS_EVENT, onSettings)
   return () => {
     window.removeEventListener(LIQUID_GLASS_TOGGLE_EVENT, onToggle)
+    window.removeEventListener(LIQUID_GLASS_SETTINGS_EVENT, onSettings)
     try { layer?.dispose() } catch { /* noop */ }
     layer = null
   }
@@ -701,6 +720,7 @@ export function apply(ctx: ClientContext): void {
         const next = readPrefs()
         next.cursorSize = px
         writePrefs(next)
+        bound?.syncCursorSize(px)
         cursor.setSize(px)
       },
       saveCursorUpload: (state: string, dataUrl: string | null) => {
@@ -793,5 +813,9 @@ export function apply(ctx: ClientContext): void {
       atelier.dispose()
       atelier = undefined
     }
+    // The theme wallpaper layer is a module-level singleton div holding a full
+    // background image; HMR re-executes the module and orphans the old one, so
+    // the dispose path (not just applySkin switches) must remove it.
+    removeThemeWallpaperLayer()
   })
 }

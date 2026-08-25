@@ -24,6 +24,8 @@ export interface ShaderOptions {
     dropShadowY: number;
     /** 极致档：1x 渲染 + 60fps（仅推荐独立显卡）。 */
     ultra?: boolean;
+    /** 标准档帧率上限（帧/秒）；ultra 固定 60，lite 不跑 WebGL 不适用。默认 30。 */
+    fpsCap?: number;
     background: 'gradient' | 'wallpaper';
     wallpaper: string;
     bgBlur: number;
