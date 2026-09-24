@@ -5,7 +5,7 @@
  * Built-in light/dark/system still go through the theme service (they are
  * built-in, so no registration race).
  */
-import type { ClientContext } from '@deepseek-ai/dsh-client-runtime/client';
+import type { Context as ClientContext } from '@deepseek-ai/cordis';
 /** Required services: theme registry (for built-in modes), the slot system,
  * and the sessions runtime (subagent catalog for the baby-whale parade).
  * `sessions` must be injected explicitly — Cordis contexts are strict proxies

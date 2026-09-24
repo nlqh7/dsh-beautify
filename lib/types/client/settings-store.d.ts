@@ -3,7 +3,7 @@
  * strength. The plugin's apply-world listeners are the only writers; the
  * settings component reads via props.useStore.
  */
-import { type EngineStoreHandle } from '@deepseek-ai/dsh-client-runtime/client';
+import { type EngineStoreHandle } from '@deepseek-ai/dsh-client-store';
 import type { CursorSkinId } from './cursor-images.ts';
 /** Store state mirrored from the theme + settings snapshots. */
 export interface DreamSkinState {

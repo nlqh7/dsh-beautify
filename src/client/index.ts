@@ -5,11 +5,16 @@
  * Built-in light/dark/system still go through the theme service (they are
  * built-in, so no registration race).
  */
-import type { ClientContext } from '@deepseek-ai/dsh-client-runtime/client'
+import type { Context as ClientContext } from '@deepseek-ai/cordis'
 // Type-only: pulls the theme service Context merge (ctx.theme) and its events.
 import type {} from '@deepseek-ai/dsh-client-ui-theme/client'
 // Type-only: pulls the settings shell's SlotMap merge (the 'settings.section' entry).
 import type {} from '@deepseek-ai/dsh-client-ui-settings/client'
+// Type-only: pulls the renderer's Context merge (ctx.slots / ctx.uiRenderer).
+// Before rc.8 this merge came from the ui-slots entry; alpha.2 moved it here and
+// ui-slots no longer exports a `/client` subpath, so without this import
+// `ctx.slots` is simply missing from the Context type.
+import type {} from '@deepseek-ai/dsh-client-ui-renderer/client'
 import type { BoundActions } from '@deepseek-ai/dsh-client-ui-slots'
 import type { ThemeSnapshot } from '@deepseek-ai/dsh-client-ui-theme/client'
 import { DREAM_SKIN_PRESETS, buildAmbient, buildScrim } from './themes.ts'

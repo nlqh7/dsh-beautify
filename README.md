@@ -2,7 +2,7 @@
 
 > DSH 社区插件 · 一站式美化包：鲸鱼光标 / 子代理小鲸鱼 / 29 套主题 / 自定义皮肤 / 声音与设置
 
-[![npm version](https://img.shields.io/badge/version-0.2.1-blue)](#) [![bundle](https://img.shields.io/badge/bundle-4.6MB-success)](#) [![license](https://img.shields.io/badge/license-CC--BY--NC--SA--4.0-orange)](#license)
+[![npm version](https://img.shields.io/badge/version-0.4.0-blue)](#) [![dsh](https://img.shields.io/badge/dsh-%E2%89%A50.1.6--alpha.2-blueviolet)](#) [![bundle](https://img.shields.io/badge/bundle-4.6MB-success)](#) [![license](https://img.shields.io/badge/license-CC--BY--NC--SA--4.0-orange)](#license)
 
 每个子代理都是一只**独立、完整、可互动**的小鲸鱼，分布在主鲸鱼周围；主鲸鱼本身可拖动、点击回弹、换皮；29 套主题、10 态光标，所有声音可独立控制。
 
@@ -126,6 +126,18 @@
 ## 🚀 安装
 
 DSH Hub 搜索 **`@nlqh/dsh-beautify`** → 安装即用，无需配置。
+
+**兼容版本：** 本版本面向 **DSH `0.1.6-alpha.2` 及以后**（清单里声明为 `engines.dsh: ">=0.1.6-alpha.2"`）。
+
+alpha.2 与更早的 `0.1.0-rc.8` 的**客户端插件契约不同，同一份构建无法同时兼容**：
+
+| | rc.8 | alpha.2（本版） |
+|---|---|---|
+| store | `@deepseek-ai/dsh-client-runtime` | `@deepseek-ai/dsh-client-store` |
+| `ClientContext` | `dsh-client-runtime/client` | `@deepseek-ai/cordis` |
+| renderer 类型合并 | 来自 ui-slots | `@deepseek-ai/dsh-client-ui-renderer/client` |
+
+v0.3.0 及更早是 rc.8 血统；v0.4.0 起改为 alpha.2 血统。
 
 安装后：
 - 屏幕右下角出现主鲸鱼

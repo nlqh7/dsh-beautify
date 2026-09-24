@@ -1,5 +1,30 @@
 /** Generated from dsh-web-ui maid-atelier.module.css (CC BY-NC-SA 4.0, see NOTICE). */
 /** Scoped stylesheet: only matches while body[data-dsh-maid-atelier] is set. */
+
+/**
+ * The stock settings trigger as rendered by `ui-settings-general`.
+ *
+ * alpha.2 wraps the trigger button in a `div.triggerRow`, so the direct-child
+ * combinator this skin used through rc.8
+ * (`[data-slot='sidebar.settings'] > :is(button, [role='button'])`) quietly
+ * stopped matching after the upgrade — the button is a grandchild now. Every
+ * settings-open behaviour keyed off that selector died with it:
+ * `data-maid-settings-open` was never projected, the `:has()` promotion of the
+ * sidebar content root never fired, and the composer demote rule never
+ * applied, so the chat composer stayed painted above the settings panel.
+ *
+ * A descendant combinator reaches the button through either shell; the
+ * trigger's own `aria-haspopup="dialog"` keeps the match unique among the
+ * slot's descendants (the panel's nav cells and close button carry no
+ * `aria-haspopup`), so the framed-trigger rules below cannot leak into the
+ * open dialog.
+ *
+ * Exported so `maid-atelier-skin.ts` projects state from exactly the selector
+ * this stylesheet styles — the two had already drifted apart once.
+ */
+export const SETTINGS_TRIGGER_SELECTOR
+  = "[data-slot='sidebar.settings'] :is(button, [role='button'])[aria-haspopup='dialog']"
+
 export const MAID_ATELIER_CSS = `/* Deep-sea maid atelier: a self-contained presentation layer over the stock
    web GUI. The generated palace and character layers are applied separately
    by client/index.ts; this file owns their composition and state motion. */
@@ -699,6 +724,29 @@ body[data-dsh-maid-atelier] :is([data-pane='conversation'], [class*='centerCol']
   background: transparent;
 }
 
+/* 右栏必须自带底色，否则女仆立绘会从面板背后透出来。
+   右栏面板的底色来自 SidebarRight 的 [data-sidebar-right-panel]（模块类 .panel
+   写的是 background: var(--dsw-alias-bg-base)），而本主题把 --dsw-alias-bg-base
+   设成了 transparent（为的是让立绘在中列透出）。中列没问题——那里有
+   background: transparent 的明确规则兜着；但右栏正好落在立绘的 right: 0
+   位置，透明面板 = 面板文字直接压在立绘上，看起来就是「女仆盖住了右栏」。
+   作者原本写了 [class*='detailsCol'] 的 porcelain 底色，但 alpha.2 的列容器
+   类名是 rightbarCol（AppFrame.module.css），该选择器已失效。改用上游**写死的**
+   属性 data-sidebar-right-panel（SidebarRight.tsx 无条件输出 push/fullscreen）
+   与 data-rightbar-col，不再依赖会重命名的模块类。
+   WE 壁纸模式下不加底色，否则会挡住壁纸（该模式另有整套玻璃 token）。 */
+body[data-dsh-maid-atelier]:not([data-we-wallpaper])
+  [data-rightbar-col] [data-sidebar-right-panel] {
+  background: rgba(242, 246, 253, 0.94);
+  border-left-color: rgba(197, 164, 104, 0.52);
+}
+
+body[data-dsh-maid-atelier][data-ds-dark-theme]:not([data-we-wallpaper])
+  [data-rightbar-col] [data-sidebar-right-panel] {
+  background: rgba(11, 23, 55, 0.94);
+}
+
+/* 同上，保留对旧类名的兼容（上游若把列容器类名换回来仍生效）。 */
 body[data-dsh-maid-atelier] :is([data-pane='details'], [class*='detailsCol']) {
   background: rgba(242, 246, 253, 0.82);
   border-left-color: rgba(197, 164, 104, 0.52);
@@ -855,8 +903,7 @@ body[data-dsh-maid-atelier] [data-maid-sidebar-footer]::before {
 
 body[data-dsh-maid-atelier]
     [data-maid-sidebar-footer]
-    [data-slot='sidebar.settings']
-    > :is(button, [role='button']) {
+    ${SETTINGS_TRIGGER_SELECTOR} {
   position: relative;
   z-index: 1;
   width: 100%;
@@ -884,8 +931,7 @@ body[data-dsh-maid-atelier]
    stays optically centered in the content box. */
 body[data-dsh-maid-atelier]:not([data-maid-sidebar-size='rail'])
     [data-maid-sidebar-footer]
-    [data-slot='sidebar.settings']
-    > :is(button, [role='button']) {
+    ${SETTINGS_TRIGGER_SELECTOR} {
   position: relative;
   flex: 1 1 auto;
   width: 100%;
@@ -896,23 +942,20 @@ body[data-dsh-maid-atelier]:not([data-maid-sidebar-size='rail'])
 
 body[data-dsh-maid-atelier]:not([data-maid-sidebar-size='rail'])
     [data-maid-sidebar-footer]
-    [data-slot='sidebar.settings']
-    > :is(button, [role='button'])
+    ${SETTINGS_TRIGGER_SELECTOR}
     [data-slot='settings.trigger'] {
   line-height: 1;
 }
 
 body[data-dsh-maid-atelier]
     [data-maid-sidebar-footer]
-    [data-slot='sidebar.settings']
-    > :is(button, [role='button'])::before {
+    ${SETTINGS_TRIGGER_SELECTOR}::before {
   content: none;
 }
 
 body[data-dsh-maid-atelier]
     [data-maid-sidebar-footer]
-    [data-slot='sidebar.settings']
-    > :is(button, [role='button']):is(:hover, :focus-visible) {
+    ${SETTINGS_TRIGGER_SELECTOR}:is(:hover, :focus-visible) {
   color: #fff8e8;
   background: none;
   filter: brightness(1.1) drop-shadow(0 5px 12px rgba(2, 8, 28, 0.3));
@@ -922,8 +965,7 @@ body[data-dsh-maid-atelier]
 
 body[data-dsh-maid-atelier]
     [data-maid-sidebar-footer]
-    [data-slot='sidebar.settings']
-    > :is(button, [role='button']) svg {
+    ${SETTINGS_TRIGGER_SELECTOR} svg {
   color: #e8c77f;
   filter: drop-shadow(0 1px 2px rgba(2, 7, 24, 0.62));
 }
@@ -997,8 +1039,7 @@ body[data-dsh-maid-atelier][data-maid-sidebar-size='rail'] [data-maid-sidebar-fo
 
 body[data-dsh-maid-atelier][data-maid-sidebar-size='rail']
     [data-maid-sidebar-footer]
-    [data-slot='sidebar.settings']
-    > :is(button, [role='button']) {
+    ${SETTINGS_TRIGGER_SELECTOR} {
   width: 38px;
   min-width: 38px;
   min-height: 38px;
@@ -1015,8 +1056,7 @@ body[data-dsh-maid-atelier][data-maid-sidebar-size='rail']
 
 body[data-dsh-maid-atelier][data-maid-sidebar-size='rail']
     [data-maid-sidebar-footer]
-    [data-slot='sidebar.settings']
-    > :is(button, [role='button'])::before {
+    ${SETTINGS_TRIGGER_SELECTOR}::before {
   display: none;
 }
 
@@ -1338,7 +1378,7 @@ body[data-dsh-maid-atelier][data-maid-sidebar-size='rail']
       button[class*='newSession'],
       [class*='sectionHeader'] [class*='iconButton'],
       [class*='search'] [class*='searchButton'],
-      [data-maid-sidebar-footer] [data-slot='sidebar.settings'] > :is(button, [role='button'])
+      [data-maid-sidebar-footer] ${SETTINGS_TRIGGER_SELECTOR}
     ) {
   box-sizing: border-box;
   width: var(--maid-rail-control-size);
@@ -1373,7 +1413,7 @@ body[data-dsh-maid-atelier][data-maid-sidebar-size='rail']
       button[class*='newSession'],
       [class*='sectionHeader'] [class*='iconButton'],
       [class*='search'] [class*='searchButton'],
-      [data-maid-sidebar-footer] [data-slot='sidebar.settings'] > :is(button, [role='button'])
+      [data-maid-sidebar-footer] ${SETTINGS_TRIGGER_SELECTOR}
     ):is(:hover, :focus-visible) {
   color: #fff1ce;
   border-color: rgba(244, 218, 164, 0.94);
@@ -2048,10 +2088,7 @@ body[data-dsh-maid-atelier]
 body[data-dsh-maid-atelier][data-maid-settings-open]
   :is([data-pane='sidebar'], [class*='sidebarCol'])
   > div
-  > :has(
-    [data-slot='sidebar.settings']
-      > :is(button, [role='button'])[aria-expanded='true']
-  ) {
+  > :has(${SETTINGS_TRIGGER_SELECTOR}[aria-expanded='true']) {
   z-index: 1000;
 }
 
@@ -2067,9 +2104,14 @@ body[data-dsh-maid-atelier] [data-maid-settings-backdrop-frame] {
 
 /* The settings surface is translucent by design. Demote the raster composer
    while its trigger owns the expanded dialog so the ornate input frame does
-   not visually compete with, or accept input through, the modal surface. */
+   not visually compete with, or accept input through, the modal surface.
+   z-index needs the important flag: the block near the end of this sheet pins
+   [data-composer-card] to z-index 100 with the same flag so the maid's z=2
+   character stage cannot cover the input, and without equal weight this demote
+   was silently outranked — the composer stayed at 100 and kept painting over
+   the translucent panel. */
 body[data-dsh-maid-atelier][data-maid-settings-open] [data-composer-card] {
-  z-index: 0;
+  z-index: 0 !important;
   opacity: 0.75;
   pointer-events: none;
   animation: none;
@@ -3235,13 +3277,29 @@ body[data-dsh-maid-atelier]:not([data-maid-chat-active]) [data-skin-chrome='char
   z-index: 2;
 }
 
+/* 会话内容整体画在女仆之上。
+   原实现靠 [class*='MessageRow'] [class*='card'] 与 [data-input-mirror] 单独抬起
+   消息面，但这两个选择器在 alpha.2 里都匹配不到任何元素：MessageRow 这个模块类
+   已不存在（消息行现在是 ui-chat 的 MessageItem / .bubble / .userRow），
+   data-input-mirror 也无任何代码写入（全仓 grep 只命中本文件生成的 .d.ts）。
+   结果是所有"自带背景的内容面"落到 z=2/3 的女仆立绘之下 → 立绘压住消息与工具卡。
+   与其继续逐个猜会重命名的模块类，不如抬整个中间列：中间列在本主题里本来就是
+   background: transparent（见上方规则），抬升它不会挡住立绘——立绘在留白处照旧
+   可见，只是任何真正画像素的内容都会盖过它。z=5 高于 character-stage 的 z=2
+   （非聊天）/z=3（聊天），低于 frame 的 overlayLayer(20)、拖拽 handle(11) 与
+   侧栏弹窗(1000)。
+   注意：本文件整体是一个模板字符串，注释里绝不能出现未转义的反引号——那会提前
+   闭合模板串，构建报 PARSE_ERROR，而源码看起来完全正常。 */
+body[data-dsh-maid-atelier] [class*='centerCol'] {
+  position: relative;
+  z-index: 5;
+}
+
 /* 女仆 z=2 仍会盖住 dsh 底部 composerSeat / 输入区（96vh 大图的下半延伸到屏幕中下）。
    把 dsh 可操作 UI 提升到女仆之上（z=100），女仆退居背景画但不挡用户真正需要
    点击的输入/对话框。仅在 maid 主题启用时生效，避免影响其他主题。 */
 body[data-dsh-maid-atelier] [class*='composerSeat'],
-body[data-dsh-maid-atelier] [data-composer-card],
-body[data-dsh-maid-atelier] [data-input-mirror],
-body[data-dsh-maid-atelier] [class*='MessageRow'] [class*='card'] {
+body[data-dsh-maid-atelier] [data-composer-card] {
   z-index: 100 !important;
 }
 
@@ -3258,6 +3316,17 @@ body[data-dsh-maid-atelier][data-we-wallpaper] {
 body[data-dsh-maid-atelier]:has([data-conversation-composer-overlay])
   [data-skin-chrome='character-stage'],
 body[data-dsh-maid-atelier]:has([data-conversation-composer-overlay])
+  [data-maid-character] {
+  display: none !important;
+}
+
+/* 插件管理页（ui-plugin-manager 的页面根节点带 data-plugin-panel）与轨迹视图同理：
+   整页内容，96vh 大立绘会压在插件列表上（实测立绘与面板重叠 40 万 px²）。
+   门控用页面自己的稳定属性而不是 DOM 层级——上游多包一层 div 就会让层级选择器静默失效，
+   这正是本文件踩过的坑。立绘是 pointer-events:none，点击能穿透，所以"能点"不代表没被盖住。 */
+body[data-dsh-maid-atelier]:has([data-plugin-panel])
+  [data-skin-chrome='character-stage'],
+body[data-dsh-maid-atelier]:has([data-plugin-panel])
   [data-maid-character] {
   display: none !important;
 }

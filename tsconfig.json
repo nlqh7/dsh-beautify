@@ -2,7 +2,10 @@
   "extends": "../../../tsconfig.base.client.json",
   "compilerOptions": {
     "rootDir": "src",
-    "outDir": "lib/types"
+    "outDir": "lib/types",
+    "types": ["node"],
+    "allowJs": true,
+    "checkJs": false
   },
   "include": [
     "src"
@@ -12,10 +15,16 @@
       "path": "../ui-theme"
     },
     {
+      "path": "../../settings/settings"
+    },
+    {
       "path": "../ui-slots"
     },
     {
-      "path": "../runtime"
+      "path": "../store"
+    },
+    {
+      "path": "../ui-renderer"
     },
     {
       "path": "../../runtime-diagnostics/invariants"

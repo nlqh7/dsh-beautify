@@ -30,7 +30,7 @@ import {
   MAID_ATELIER_WORKSPACE_RIBBON,
   MAID_ATELIER_WORKSPACE_SHIELD,
 } from './maid-art/maid-atelier-workspace-art.generated.ts'
-import { MAID_ATELIER_CSS } from './maid-atelier-css.ts'
+import { MAID_ATELIER_CSS, SETTINGS_TRIGGER_SELECTOR } from './maid-atelier-css.ts'
 import type { MaidSkinController } from './maid-skin.ts'
 
 const SKIN_TITLE = '深海女仆工坊 · DeepSeek Harness'
@@ -39,7 +39,8 @@ const SKIN_SYSTEM_CHROME_COLOR = '#0b193f'
 const MAID_ATELIER_CSS_TAG = 'dsh-beautify/maid-atelier'
 const VIEWPORT_RESIZE_SETTLE_MS = 120
 const SIDEBAR_COLUMN_SELECTOR = ":is([data-pane='sidebar'], [class*='sidebarCol'])"
-const SETTINGS_TRIGGER_SELECTOR = "[data-slot='sidebar.settings'] > :is(button, [role='button'])"
+/* Shared with the stylesheet through maid-atelier-css.ts (see the constant's
+   doc comment there): the trigger sits inside a wrapper row in alpha.2. */
 const SETTINGS_MASK_SELECTOR = "[role='presentation'] > [class*='mask']"
 const ACTIVE_CONVERSATION_SELECTOR = "[data-phase='active']"
 const ACTIVE_CHAT_SELECTOR = `${ACTIVE_CONVERSATION_SELECTOR} [data-chat-flow]`

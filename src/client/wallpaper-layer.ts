@@ -37,6 +37,10 @@ const INVENTORY_URL = "/wallpaper-engine/inventory";
 // Body attribute set while a wallpaper is active; CSS uses it to make the frame
 // background transparent so the behind-body layer shows through.
 const ACTIVE_ATTR = "data-we-wallpaper";
+// Set while the ACTIVE media is measured to be dark (relative luminance of its
+// pixels below DARK_MEDIA_THRESHOLD). CSS uses it to keep the light text ramp
+// instead of the near-black one, which otherwise disappears on a dark wallpaper.
+const DARK_MEDIA_ATTR = "data-we-dark-media";
 const LAYER_ID = "dsh-wallpaper-engine-layer";
 const SCRIM_ID = "dsh-wallpaper-engine-scrim";
 
@@ -495,6 +499,332 @@ function removeLayer(el) {
   el.remove();
 }
 
+// ── Adaptive text contrast: how dark is the active wallpaper? ───────────────
+// The light-scheme ramp assumes every wallpaper is BRIGHT: over a bright media
+// the translucent white glass panels resolve light, so near-black labels read.
+// Over a dark media they resolve dark and near-black text vanishes. So we read
+// the media's own WCAG relative luminance and mark <body> when the backdrop
+// ends up dark, letting CSS switch to the light ramp the dark theme uses.
+//
+// The decision is taken from, in order:
+//   1. the LIVE layer — for a video the frame actually on screen (centre-cropped
+//      the way `object-fit: cover` presents it); for a web page the colour the
+//      page really paints (a canvas/video covering its box, else the background
+//      it declares);
+//   2. the entry's `preview` poster, but only while (1) is unreadable.
+// The poster must not be the primary source: it is a PROMO image and regularly
+// disagrees with the media. Across the 24 wallpapers measured here it reads
+// >2x too bright in 10 of them and up to 30x (video 2358176341: poster 0.86,
+// render 0.03), so a poster-led probe fails on exactly the darkest wallpapers —
+// the ones this whole branch exists for.
+//
+// Frames are sampled across a spread window and judged on their MEDIAN, because
+// the first seconds of a video need not represent the loop, and the scrim is
+// composited in pixel space (see pixelLuma) so the number compared against the
+// threshold is the one the screen shows. Anything still unmeasurable (no frame
+// before the window ends, cross-origin page, decode failure, timeout) leaves the
+// poster's verdict in place.
+const DARK_MEDIA_THRESHOLD = 0.18;
+const TONE_PROBE_TIMEOUT = 4000;
+// Sampled ms after the layer mounts (so 1s, 3s, 6s, 10s in): spread out on
+// purpose, because a video may open on a bright title card or fade in from
+// black, and judging it on the first second alone gets either one backwards.
+const TONE_SAMPLE_DELAYS = [1000, 2000, 3000, 4000];
+const TONE_MAX_FRAMES = 3;
+const TONE_EDGE = 32; // readback canvas long edge, px
+const posterPixels = new Map(); // poster URL -> sampled RGBA (scrim-independent)
+// Painted `background-image` URL -> sampled RGBA. Bounded by how many distinct
+// backgrounds the user browses; cleared wholesale rather than evicted singly.
+const bgPixels = new Map();
+const BG_PIXELS_MAX = 32;
+let toneToken = 0; // invalidates an in-flight probe when the selection changes
+let toneTimer = null; // pending live re-sample
+let toneKey = ""; // wallpaper the collected frames belong to
+let toneFrames = []; // live sampled frames for toneKey
+let tonePoster = null; // poster sample, used only until a live frame exists
+
+/** sRGB channel (0..255) to linear-light (0..1), per WCAG 2.x. */
+function srgbToLinear(c) {
+  const v = c / 255;
+  return v <= 0.04045 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
+}
+
+/** Source rect reproducing what `object-fit: cover` puts on screen. `scale` is
+ * the factor the image is multiplied by, so the visible source size is the BOX
+ * size divided by it — dividing the image size gives a rect larger than the
+ * image, which the browser clamps, sampling something other than the screen. */
+function coverCrop(iw, ih, boxW, boxH) {
+  const scale = Math.max(boxW / iw, boxH / ih);
+  const w = boxW / scale;
+  const h = boxH / scale;
+  return { x: (iw - w) / 2, y: (ih - h) / 2, w, h };
+}
+
+/** Downscaled RGBA readback of a drawable source (image / video / canvas), or
+ * null when the pixels cannot be read (no frame yet, tainted canvas, no 2D
+ * context). Kept un-composited so one sample serves every scrim setting. */
+function grabPixels(el, iw, ih, crop) {
+  try {
+    if (!iw || !ih) return null;
+    const w = Math.max(1, Math.min(TONE_EDGE, Math.round(iw)));
+    const h = Math.max(1, Math.round((w * ih) / iw));
+    const cv = document.createElement("canvas");
+    cv.width = w;
+    cv.height = h;
+    const ctx = cv.getContext("2d", { willReadFrequently: true });
+    if (!ctx) return null;
+    if (crop) ctx.drawImage(el, crop.x, crop.y, crop.w, crop.h, 0, 0, w, h);
+    else ctx.drawImage(el, 0, 0, w, h);
+    return ctx.getImageData(0, 0, w, h).data;
+  } catch {
+    return null; // tainted canvas / decode failure
+  }
+}
+
+/** WCAG relative luminance of a sampled frame as it will actually appear on
+ * screen. The scrim is black at alpha = scrim and the browser composites it in
+ * sRGB space, so the darkening must be applied to each channel BEFORE the linear
+ * conversion. Multiplying the linear mean by (1 - scrim) instead reads 25-30%
+ * too bright: a 0.5 sRGB tone under a 0.25 scrim scores 0.161 that way and 0.115
+ * as painted. Measured against real screenshots, the pixel-space version
+ * predicts 0.0272 where 0.0282 was rendered; the linear one says 0.0353. */
+function pixelLuma(px, scrim) {
+  const k = 1 - scrim;
+  let sum = 0;
+  let n = 0;
+  for (let i = 0; i < px.length; i += 4) {
+    if (px[i + 3] < 8) continue; // transparent: the wallpaper paints nothing here
+    sum += 0.2126 * srgbToLinear(px[i] * k)
+      + 0.7152 * srgbToLinear(px[i + 1] * k)
+      + 0.0722 * srgbToLinear(px[i + 2] * k);
+    n++;
+  }
+  return n ? sum / n : null;
+}
+
+/** Fraction of a sampled frame that is actually painted. */
+function opaqueFraction(px) {
+  let n = 0;
+  for (let i = 3; i < px.length; i += 4) if (px[i] >= 8) n++;
+  return n / (px.length / 4);
+}
+
+/** Sampled pixels of an image URL, or null when unreadable. */
+function sampleImage(url, timeoutMs) {
+  return new Promise((resolve) => {
+    let settled = false;
+    const done = (v) => { if (!settled) { settled = true; resolve(v); } };
+    const img = new Image();
+    const timer = setTimeout(() => done(null), timeoutMs);
+    img.onerror = () => { clearTimeout(timer); done(null); };
+    img.onload = () => {
+      clearTimeout(timer);
+      done(grabPixels(img, img.naturalWidth, img.naturalHeight, null));
+    };
+    img.src = url;
+  });
+}
+
+/** A declared background colour as a one-pixel sample, or null when it is
+ * see-through (a translucent base says nothing about what the page paints). */
+function cssBgPixels(win, el) {
+  if (!el || !win) return null;
+  const m = win.getComputedStyle(el).backgroundColor.match(/rgba?\(([^)]+)\)/);
+  if (!m) return null;
+  const p = m[1].split(",").map((v) => Number(v.trim()));
+  const alpha = p.length > 3 ? p[3] : 1;
+  if (!(alpha >= 0.5)) return null;
+  return new Uint8ClampedArray([p[0], p[1], p[2], 255]);
+}
+
+/** Resolve a declared `background-image` to a single URL, or null when the layer
+ * is absent or a gradient (which cannot be rasterised from the DOM). The very
+ * common "black base + full-bleed image" wallpaper paints the IMAGE, so reading
+ * only `background-color` reports the colour behind it. */
+function bgImageUrl(win, el) {
+  if (!el || !win) return null;
+  const raw = win.getComputedStyle(el).backgroundImage || "";
+  const m = /^url\((['"]?)([^'")]+)\1\)$/.exec(raw.trim());
+  if (!m) return null;
+  const url = m[2].trim();
+  if (!url || url.startsWith("data:")) return null;
+  try { return new URL(url, doc_base(win)).href; } catch { return null; }
+}
+
+/** The document's own base, so a relative `url(1.jpg)` resolves against the
+ * wallpaper directory rather than the dsh page. */
+function doc_base(win) {
+  const doc = win.document;
+  return (doc && doc.baseURI) || win.location.href;
+}
+
+/** Sampled pixels of a page's painted background image, cached per URL because
+ * the tone schedule samples up to TONE_MAX_FRAMES times. A null entry caches a
+ * failed load so a broken image is not re-fetched on every sample. */
+async function bgImagePixels(win, el, cached) {
+  const url = bgImageUrl(win, el);
+  if (url === null) return null;
+  if (cached.has(url)) return cached.get(url);
+  const px = await sampleImage(url, TONE_PROBE_TIMEOUT);
+  cached.set(url, px);
+  return px;
+}
+
+/** A `web` wallpaper is a live same-origin page, so read what it paints: a
+ * canvas/video that covers its own box, else the background IMAGE it declares,
+ * else the background colour. A mostly-transparent canvas is an overlay, not the
+ * paint — trusting one gave 0.21 for a page that rendered 0.00 (a small bright
+ * clock canvas over a black page). Returns null when the page is not readable. */
+async function iframePixels(frame, cached) {
+  let doc = null;
+  try { doc = frame.contentDocument; } catch { return null; }
+  const win = doc && doc.defaultView;
+  if (!doc || !doc.body || !win) return null;
+  let covered = null;
+  for (const el of doc.querySelectorAll("canvas, video")) {
+    const isVideo = el.tagName === "VIDEO";
+    const px = grabPixels(el, isVideo ? el.videoWidth : el.width, isVideo ? el.videoHeight : el.height, null);
+    if (px && opaqueFraction(px) >= 0.5) covered = px;
+  }
+  if (covered !== null) return covered;
+  /* background-image paints ON TOP of background-color, so try it first. */
+  for (const el of [doc.body, doc.documentElement]) {
+    const px = await bgImagePixels(win, el, cached);
+    if (px !== null) return px;
+  }
+  const base = cssBgPixels(win, doc.body);
+  return base === null ? cssBgPixels(win, doc.documentElement) : base;
+}
+
+/** Pixels of what the wallpaper layer is painting right now, or null when they
+ * cannot be read yet (the caller then falls back to the poster). Async because a
+ * web page's paint may only be knowable by loading its background image. */
+async function livePixels(cached) {
+  const layer = document.getElementById(LAYER_ID);
+  if (!layer) return null;
+  const video = layer.querySelector("video");
+  if (video) {
+    if (video.readyState < 2) return null;
+    const iw = video.videoWidth;
+    const ih = video.videoHeight;
+    if (!iw || !ih) return null;
+    const box = { w: window.innerWidth || iw, h: window.innerHeight || ih };
+    return grabPixels(video, iw, ih, coverCrop(iw, ih, box.w, box.h));
+  }
+  const frame = layer.querySelector("iframe");
+  return frame ? await iframePixels(frame, cached) : null;
+}
+
+/** Poster URL, used only while the live layer cannot be read. Served by the host,
+ * so it is same-origin and safe to rasterise. */
+function toneProbeUrl() {
+  const entry = selection.inventory.wallpapers.find((x) => x.id === selection.id);
+  const preview = entry && typeof entry.preview === "string" ? entry.preview : "";
+  return preview || selection.url || "";
+}
+
+/** Judge the collected samples: the MEDIAN of their composited luminances, so a
+ * single unrepresentative frame cannot decide on its own. The scrim is applied
+ * here rather than at sample time, which also makes a scrim change free — the
+ * frames are already in hand. */
+function judgeTone() {
+  if (!document.body) return;
+  const frames = toneFrames.length ? toneFrames : (tonePoster ? [tonePoster] : []);
+  const lumas = [];
+  for (const px of frames) {
+    const l = pixelLuma(px, selection.scrim);
+    if (l !== null) lumas.push(l);
+  }
+  if (!lumas.length) return;
+  lumas.sort((a, b) => a - b);
+  if (lumas[Math.floor(lumas.length / 2)] < DARK_MEDIA_THRESHOLD) {
+    document.body.setAttribute(DARK_MEDIA_ATTR, "1");
+  } else {
+    document.body.removeAttribute(DARK_MEDIA_ATTR);
+  }
+}
+
+/** Forget the per-wallpaper samples (the layer they describe is gone). */
+function resetTone() {
+  toneKey = "";
+  toneFrames = [];
+  tonePoster = null;
+  if (toneTimer !== null) {
+    if (typeof window !== "undefined") window.clearTimeout(toneTimer);
+    toneTimer = null;
+  }
+}
+
+/** Walk the sample schedule, then stop. Judging on a spread of frames is what
+ * keeps a video whose first seconds disagree with the rest of its loop honest:
+ * 斯卡蒂 opens at 0.44 and settles at 0.17, "Can't Stop Lovin'" fades in from
+ * black to 0.48 — sampling only the first second gets both of them backwards. */
+function scheduleToneSamples(step) {
+  if (toneTimer !== null) {
+    if (typeof window !== "undefined") window.clearTimeout(toneTimer);
+    toneTimer = null;
+  }
+  if (typeof window === "undefined" || step >= TONE_SAMPLE_DELAYS.length) return;
+  toneTimer = window.setTimeout(() => {
+    toneTimer = null;
+    void collectLiveTone();
+    scheduleToneSamples(step + 1);
+  }, TONE_SAMPLE_DELAYS[step]);
+}
+
+/** Take one live frame. Only the schedule calls this, so a scrim drag or a burst
+ * of effect re-applications cannot inject an early (unrepresentative) frame. */
+async function collectLiveTone() {
+  if (!selection.url) return;
+  const token = ++toneToken;
+  const key = selection.type + "\u0000" + selection.url;
+  if (key !== toneKey) {
+    toneKey = key;
+    toneFrames = [];
+    tonePoster = null;
+  }
+  if (toneFrames.length >= TONE_MAX_FRAMES) return;
+  if (bgPixels.size > BG_PIXELS_MAX) bgPixels.clear();
+  const live = await livePixels(bgPixels);
+  if (live === null) return; // not readable yet: the next sample will try again
+  toneFrames.push(live);
+  if (token === toneToken) judgeTone();
+}
+
+/** Re-evaluate the dark-media flag for the current selection + scrim from the
+ * samples already in hand, falling back to the poster while there are none.
+ * Allocation-free, so it may run on every effect application. */
+async function refreshMediaTone() {
+  const token = ++toneToken;
+  if (!selection.url) {
+    resetTone();
+    if (document.body) document.body.removeAttribute(DARK_MEDIA_ATTR);
+    return;
+  }
+  const key = selection.type + "\u0000" + selection.url;
+  if (key !== toneKey) {
+    toneKey = key;
+    toneFrames = [];
+    tonePoster = null;
+  }
+  if (toneFrames.length) {
+    if (token === toneToken) judgeTone();
+    return;
+  }
+  const url = toneProbeUrl();
+  if (!url) return;
+  if (tonePoster === null) {
+    tonePoster = posterPixels.get(url) || null;
+    if (tonePoster === null) {
+      tonePoster = await sampleImage(url, TONE_PROBE_TIMEOUT);
+      if (tonePoster === null) return;
+      posterPixels.set(url, tonePoster);
+    }
+  }
+  if (token !== toneToken) return; // a newer selection superseded this probe
+  judgeTone();
+}
+
 function syncLayers() {
   // 1. Wallpaper element.
   const existing = document.getElementById(LAYER_ID);
@@ -515,9 +845,16 @@ function syncLayers() {
     if (video) {
       if (selection.playing) { try { video.play().catch(() => {}); } catch {} }
       else video.pause();
+      // No frame is readable until one has decoded, so restart the sample window
+      // once that happens — the samples are deliberately spread over time.
+      video.addEventListener("loadeddata", () => scheduleToneSamples(0), { once: true });
     }
+    // A web page paints asynchronously too, and the window also covers the case
+    // where the media never reports readiness.
+    scheduleToneSamples(0);
   } else if (existing) {
     removeLayer(existing);
+    resetTone();
   }
 
   // 2. Scrim element (always present while a wallpaper is active).
@@ -714,6 +1051,9 @@ function applyEffects() {
   if (document.body && document.body.offsetHeight !== undefined) {
     void document.body.offsetHeight;
   }
+  // Keep the text-contrast decision in step with the scrim and with whatever
+  // wallpaper the selection resolved. Cached, so this is free on repeat calls.
+  void refreshMediaTone();
 }
 
 function clearEffects() {
@@ -723,6 +1063,11 @@ function clearEffects() {
   s.removeProperty("--we-wallpaper-scale");
   const scrim = document.getElementById(SCRIM_ID);
   if (scrim) scrim.style.background = "";
+  // Drop the measured-tone state with the wallpaper: the flag only means
+  // anything next to data-we-wallpaper, and the sample chain must not outlive
+  // the layer it was reading.
+  resetTone();
+  document.body.removeAttribute(DARK_MEDIA_ATTR);
 }
 
 // ── Settings picker ─────────────────────────────────────────────────────────
@@ -1085,8 +1430,13 @@ const CSS = `
      near-white page. Over a busy wallpaper + light scrim they lose contrast, so
      push the whole gray ramp darker while a wallpaper is active. Primary text
      is already near-black; we still pin it to pure black for max legibility.
-     (Dark mode is untouched: its white-on-dark text already reads fine.) */
-  body[data-we-wallpaper]:not([data-ds-dark-theme]) {
+     (Dark mode is untouched: its white-on-dark text already reads fine.)
+     This branch assumes a BRIGHT wallpaper: the translucent white glass panels
+     resolve to a light backdrop, so dark text reads. On a DARK wallpaper they
+     resolve dark instead and near-black text disappears, so the client measures
+     the active media and marks body[data-we-dark-media] - the selector group
+     further down then reuses the dark theme's light ramp. */
+  body[data-we-wallpaper]:not([data-ds-dark-theme]):not([data-we-dark-media]) {
     --dsw-alias-label-primary: rgb(0, 0, 0);
     --dsw-alias-label-primary-inverted: #ffffff;
     --dsw-alias-label-primary-dimmed: rgb(10, 10, 12);
@@ -1175,7 +1525,12 @@ const CSS = `
     --dsw-alias-interactive-bg-active: rgba(255, 255, 255, 0.2);
     --dsw-alias-interactive-bg-hover-solid: rgba(255, 255, 255, 0.14);
   }
-  body[data-ds-dark-theme][data-we-wallpaper] {
+  /* A DARK wallpaper needs the same light text ramp as the dark theme: the white
+     glass panels resolve dark over it, so the near-black ramp above cannot be
+     used (it is excluded via :not([data-we-dark-media])). The flag is measured
+     by the client from the media's own pixels. */
+  body[data-ds-dark-theme][data-we-wallpaper],
+  body[data-we-wallpaper][data-we-dark-media] {
     --dsw-specific-input-major: rgba(255, 255, 255, 0.07);
     --dsw-specific-bubble: rgba(255, 255, 255, 0.06);
     --dsw-specific-bubble-highlight: rgba(255, 255, 255, 0.08);
