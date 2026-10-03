@@ -135,12 +135,86 @@ body[data-dsh-maid-atelier] {
   --dsw-specific-tip: rgba(235, 240, 250, 0.9);
 }
 
+/* ⚠ 这里的 token 重定义**只有 applySkin 不写的那 30 个会生效**。
+   调色板是 JS 以行内 custom property 写在 <body> 上的
+   （index.ts applySkin 的 style.setProperty），行内声明压过任何作者样式表里的
+   token 声明——同一元素、无需 !important 也轮不到样式表。本块 89 个 token 里
+   有 59 个被行内值盖住（--dsw-alias-label-* / bg-* / border-* / specific-* …），
+   实测过一次：深色档 body 的 --dsw-alias-label-caption 读出的是行内值
+   #52618f，而不是这里的 #7f90b4。
+
+   所以：**不要指望在这里改调色板去修深色可读性**。要改颜色就两选一——
+   ① 改 themes.ts 的 preset（两种明暗共用一套，慎用）；
+   ② 像本文件下面 [data-question-key] / [data-testid='todo-panel'] /
+      [data-composer-card] 那样，给具体表面配一份自己的、特异性更高的 color。
+   本块的价值在于"applySkin 不写"的 token：滚动条、state-*、tooltip/toast、
+   shadow-lv* 等，它们在深色下确实由这里决定。 */
+/* ⚠ 深色主题的**墨色总闸**。
+   applySkin 把 label/text 家族与表面家族以**行内 custom property** 写在 <body> 上
+   （index.ts 的 set()），而女仆系是固定调色板主题：preset.palette 只有一套，深色
+   不换调色板，深色靠本表的 [data-ds-dark-theme] 规则覆写。但行内声明在 <body>
+   这一层赢过任何样式表，于是本表深色块里写好的 label-primary #e7ecf7 /
+   label-secondary #bdc9e3 / bg-layer-1 rgba(18,31,67,0.9) 等**全部是死值**，
+   深色下墨色与表面都停在浅色档。
+
+   probe-maid-msg-ink 实测（浅/深各一遍，dump bodyInline 与 markdown 的 computed
+   color）：深色下 markdown 正文 color = rgb(23,35,71)（浅色档 #172347），卡片底
+   rgba(18,31,67,0.94) → 消息正文与表格标签列整个看不见（截图里只剩绿勾和内联
+   代码芯片，因为芯片用浅色底所以反而是唯一可见的）。同一份行内值也让状态栏
+   muted 标签（轮数 / tok/s / 缓存命中 / 进度百分比）在深底上只有 1.4–2.0:1。
+
+    行内声明只在 <body> 自身获胜 —— 把这一族声明到 **#root**（body 的子孙）即可
+    覆盖。值直接沿用本表深色块里原本写好的那一套。bg-base 不动（那是 body 的环境
+    渐变，动它会让立绘穿透）。
+
+    2026-10-03 追加：这一族里 **label-tertiary 由 #96a6c9 抬到 #9dabce**（text-tertiary
+    同步）。旧值是按浅纸底调的；深色档的底从"灰蓝中调"改回夜海军蓝之后（themes.ts 的
+    NIGHT_SCRIM 把 scrim 从纸白 #dce6f5 换成 #080f27），开右栏的窄列里回合尾时间戳在
+    最亮的那个底上实测 底 [38,58,93] / 墨 [146,161,196] = 4.41（WARN）。新值同一处
+    4.96，与 secondary #bdc9e3 之间仍留一档，正文层级不变。本文件另外 5 处深色
+    tertiary 副本（body 级 / better-sidebar / terminal / 弹窗菜单 / 模态）一并对齐，
+    免得同一个标签换个容器就换一个读数。 */
+body[data-dsh-maid-atelier][data-ds-dark-theme] [id='root'] {
+  --dsw-alias-label-primary: #e7ecf7;
+  --dsw-alias-label-primary-bluish: #d5dff3;
+  --dsw-alias-label-primary-dimmed: #b9c6e3;
+  --dsw-alias-label-secondary: #bdc9e3;
+  --dsw-alias-label-tertiary: #9dabce;
+  --dsw-alias-label-quaternary: #b9c6e3;
+  --dsw-alias-label-caption: #7f90b4;
+  --dsw-alias-label-dimmed: #6f82a8;
+  --dsw-alias-text-primary: #e7ecf7;
+  --dsw-alias-text-tertiary: #9dabce;
+  --dsw-alias-markdown-placeholder: #7f90b4;
+  --dsw-alias-bg-layer-1: rgba(18, 31, 67, 0.9);
+  --dsw-alias-bg-layer-2: rgba(24, 40, 80, 0.92);
+  --dsw-alias-bg-layer-3: rgba(32, 49, 91, 0.94);
+  --dsw-alias-bg-module-platform: rgba(24, 40, 80, 0.94);
+  --dsw-alias-bg-multi-select: rgba(32, 49, 91, 0.94);
+  --dsw-alias-bg-overlay: rgba(13, 25, 59, 0.97);
+  --dsw-alias-markdown-inline-code: rgba(32, 49, 91, 0.94);
+  --dsw-alias-markdown-code-block: rgba(24, 40, 80, 0.94);
+  --dsw-alias-markdown-code-block-banner: rgba(32, 49, 91, 0.94);
+  --dsw-specific-bubble: rgba(18, 31, 67, 0.9);
+  --dsw-specific-menu: rgba(24, 40, 80, 0.94);
+  --dsw-specific-selector: rgba(24, 40, 80, 0.94);
+}
+
 body[data-dsh-maid-atelier][data-ds-dark-theme] {
   color: #e5eaf6;
   background-color: #080f27;
   --maid-glass: rgba(13, 25, 59, 0.74);
   --maid-shadow: 0 18px 58px rgba(0, 0, 0, 0.38), 0 2px 10px rgba(0, 0, 0, 0.3);
-  --dsw-alias-bg-base: transparent;
+  /* 这里原来写的是 --dsw-alias-bg-base: transparent（想让夜宫图直接透出来）。
+     实测**从未生效**，而且即便生效也不够：
+       · applySkin 把该 token 以行内声明写在 <body> 上，行内压过任何没有
+         !important 的作者声明 —— 姊妹皮肤 maid-whale 的深色 bg-base 之所以
+         能赢，正因为它是带 !important 写的；
+       · 夜宫图在中下部有一处月光高光（实测 rgb(61,88,131)），浅墨 tertiary
+         压上去只有 2.94:1，仍读不清。
+     深色档的 scrim 现在由 themes.ts 的 NIGHT_SCRIM 换成夜底色 #080f27
+     （index.ts 的 scrimPalette）。此处留说明而不是留死声明，免得将来行内
+     写入变成条件写入后踩进 transparent。 */
   --dsw-alias-bg-layer-1: rgba(18, 31, 67, 0.9);
   --dsw-alias-bg-layer-2: rgba(24, 40, 80, 0.92);
   --dsw-alias-bg-layer-3: rgba(32, 49, 91, 0.94);
@@ -187,7 +261,7 @@ body[data-dsh-maid-atelier][data-ds-dark-theme] {
   --dsw-alias-label-primary-foreground: #080f27;
   --dsw-alias-label-primary-inverted: #080f27;
   --dsw-alias-label-secondary: #bdc9e3;
-  --dsw-alias-label-tertiary: #96a6c9;
+  --dsw-alias-label-tertiary: #9dabce;
   --dsw-alias-markdown-citation: rgba(155, 176, 225, 0.12);
   --dsw-alias-markdown-code-block: rgba(12, 22, 52, 0.92);
   --dsw-alias-markdown-code-block-banner: rgba(18, 31, 67, 0.94);
@@ -597,27 +671,62 @@ body[data-dsh-maid-atelier] :is([data-pane='sidebar'], [class*='sidebarCol']) {
   --dsw-alias-button-floating-hover: rgba(255, 252, 243, 0.18);
   --dsw-alias-interactive-bg-hover: rgba(255, 252, 243, 0.1);
   --dsw-alias-interactive-bg-active: rgba(197, 164, 104, 0.3);
+  /* 侧栏本该是深海军蓝玻璃（本作用域上面的米白标签、金色饰线、宝石蓝选中板
+     都是为它配的），但 applySkin 把表面 token 以**行内 custom property** 写在
+     <body> 上，压死作者样式表的同名声明。真正盖住侧栏的是
+     **--dsw-specific-sidebar-fill**：上游 ui-sidebar 的 SidebarRoot.module.css:16
+     就是 background: var(--dsw-specific-sidebar-fill)，行内值
+     rgba(248,250,255,0.72)（浅瓷白）在 280×900 的列根上整层铺开，合成出实测的
+     rgb(182,186,200) 浅灰紫。
+
+     （上一轮曾误判成 --dsw-alias-bg-layer-1：两者数值巧合相同，靠读 token 值
+     猜级联会猜错。改用 CDP CSS.getMatchedStylesForNode 拉出命中规则原文，才看到
+     .RfFalW_root 上唯一的 background 声明来自 sidebar-fill。教训：级联结论一律
+     以 matched-rules 原文为准。）
+
+     修法：本作用域把 sidebar-fill 置 transparent，让列自己的底色透上来；海军蓝
+     渐变则从下面那条 [> div] 规则搬到**列本身** —— 那个包装层是 display:contents
+     （rect 0×0），它的 background 从来没画出来过，原样是死代码。
+     弹窗/菜单被 portal 进来时由文件后面的 [role='dialog'], [role='menu'] 规则重置。 */
+  --dsw-specific-sidebar-fill: transparent;
+  --dsw-alias-bg-layer-1: transparent;
+  --dsw-alias-bg-layer-2: rgba(14, 30, 74, 0.9);
+  --dsw-alias-bg-layer-3: rgba(18, 37, 88, 0.92);
+  --dsw-alias-bg-overlay: rgba(11, 24, 62, 0.94);
+  --dsw-alias-bg-module-platform: rgba(14, 30, 74, 0.9);
+  --dsw-alias-bg-multi-select: rgba(18, 37, 88, 0.9);
+  --dsw-alias-bg-skeleton: rgba(151, 169, 216, 0.12);
+  --dsw-alias-fill-tsp-secondary: rgba(255, 252, 243, 0.08);
   position: relative;
   z-index: auto;
   border-right: 0;
-  background: #0a173b;
+  /* Navy glass lives on the column itself: the [> div] wrapper below is
+     display:contents, so a background painted there never renders. The trailing
+     #0a173b is the shorthand's color layer, kept as the flat fallback under the
+     gradients. */
+  background:
+    radial-gradient(circle at 50% 14%, rgba(91, 119, 188, 0.23), transparent 31%),
+    linear-gradient(180deg, rgba(16, 36, 86, 0.97), rgba(5, 14, 43, 0.96)),
+    repeating-linear-gradient(135deg, rgba(255, 255, 255, 0.026) 0 1px, transparent 1px 7px),
+    #0a173b;
+  /* Gold rim first so the inner vignette cannot dim the 1px/3px edge lines. */
   box-shadow:
-    8px 0 34px rgba(8, 17, 48, 0.22),
     inset -1px 0 rgba(255, 245, 215, 0.82),
-    inset -3px 0 rgba(226, 207, 166, 0.72);
+    inset -3px 0 rgba(226, 207, 166, 0.72),
+    inset 9px 0 16px rgba(255, 255, 255, 0.018),
+    inset -8px 0 18px rgba(0, 0, 0, 0.26),
+    8px 0 34px rgba(8, 17, 48, 0.22);
 }
 
+/* This wrapper is display:contents (rect 0x0) — it generates no box, so the
+   navy gradient that used to live here never rendered. The glass moved up to
+   the column rule above; only the stacking hints stay, for builds where this
+   element does generate a box. */
 body[data-dsh-maid-atelier] :is([data-pane='sidebar'], [class*='sidebarCol']) > div {
   isolation: auto;
   position: relative;
   overflow: hidden;
-  background:
-    radial-gradient(circle at 50% 14%, rgba(91, 119, 188, 0.23), transparent 31%),
-    linear-gradient(180deg, rgba(16, 36, 86, 0.97), rgba(5, 14, 43, 0.96)),
-    repeating-linear-gradient(135deg, rgba(255, 255, 255, 0.026) 0 1px, transparent 1px 7px);
-  box-shadow:
-    inset 9px 0 16px rgba(255, 255, 255, 0.018),
-    inset -8px 0 18px rgba(0, 0, 0, 0.26);
+  background: transparent;
 }
 
 body[data-dsh-maid-atelier] :is([data-pane='sidebar'], [class*='sidebarCol']) > div::before {
@@ -741,9 +850,33 @@ body[data-dsh-maid-atelier]:not([data-we-wallpaper])
   border-left-color: rgba(197, 164, 104, 0.52);
 }
 
+/* 深色下右栏必须**自带一整套**面板色，不能只换 background。
+   guide 卡片（工作区文件/新建终端/浏览器）用 --dsw-alias-bg-layer-1 画底
+   （ui-sidebar-right/tabs/guide/GuideBody.module.css:58），而该 token 由 applySkin
+   以行内 custom property 写在 <body> 上；女仆系是「固定调色板 + 深色靠本表覆写」
+   的主题（index.ts 只取 preset.palette，没有深色变体），所以深色下行内 layer-1
+   仍是浅瓷白 rgba(248,250,255,0.72)，在深色面板上合成出实测 rgb(182,187,199)
+   的浅板 —— 0.72×248+0.28×11=181.7 / ×250+0.28×23=186.4 / ×255+0.28×55=199，
+   与实测逐位吻合。墨色同样是浅色档的 muted，浅板压浅墨 → 3.14:1。
+
+   在本作用域重新声明这一族（与侧栏作用域同法：descendant 上的声明直接压过
+   body 的继承值），标签族一并换成浅色墨，否则深底配暗墨会更差。 */
 body[data-dsh-maid-atelier][data-ds-dark-theme]:not([data-we-wallpaper])
   [data-rightbar-col] [data-sidebar-right-panel] {
   background: rgba(11, 23, 55, 0.94);
+  --dsw-alias-bg-base: transparent;
+  --dsw-alias-bg-layer-1: rgba(26, 42, 84, 0.86);
+  --dsw-alias-bg-layer-2: rgba(32, 50, 96, 0.9);
+  --dsw-alias-bg-layer-3: rgba(38, 58, 108, 0.92);
+  --dsw-alias-bg-overlay: rgba(13, 25, 59, 0.96);
+  --dsw-alias-label-primary: #e7ecf7;
+  --dsw-alias-label-secondary: #c3cee6;
+  --dsw-alias-label-tertiary: #a3b4d6;
+  --dsw-alias-label-caption: #93a5ca;
+  --dsw-alias-interactive-bg-hover: rgba(164, 183, 229, 0.14);
+  --dsw-alias-interactive-bg-hover-solid: rgba(52, 76, 132, 0.9);
+  --dsw-alias-border-l1: rgba(151, 169, 216, 0.2);
+  --dsw-alias-border-l2: rgba(151, 169, 216, 0.32);
 }
 
 /* 同上，保留对旧类名的兼容（上游若把列容器类名换回来仍生效）。 */
@@ -1247,7 +1380,7 @@ body[data-dsh-maid-atelier][data-ds-dark-theme] [data-dsh-better-sidebar] {
   --dsw-alias-label-primary: #e7ecf7;
   --dsw-alias-label-primary-bluish: #d5dff3;
   --dsw-alias-label-secondary: #bdc9e3;
-  --dsw-alias-label-tertiary: #96a6c9;
+  --dsw-alias-label-tertiary: #9dabce;
   --dsw-alias-label-caption: #7f90b4;
   --dsw-alias-border-l1: rgba(151, 169, 216, 0.2);
   --dsw-alias-border-l2-darkmode-thin: rgba(151, 169, 216, 0.3);
@@ -1378,6 +1511,7 @@ body[data-dsh-maid-atelier][data-maid-sidebar-size='rail']
       button[class*='newSession'],
       [class*='sectionHeader'] [class*='iconButton'],
       [class*='search'] [class*='searchButton'],
+      [class*='panelRow'],
       [data-maid-sidebar-footer] ${SETTINGS_TRIGGER_SELECTOR}
     ) {
   box-sizing: border-box;
@@ -1406,6 +1540,19 @@ body[data-dsh-maid-atelier][data-maid-sidebar-size='rail']
     box-shadow 150ms ease;
 }
 
+/* rail 里的「插件」行是一个 panelRow（不是 iconButton / searchButton），
+   原先落在这条规则之外，于是它既没有底板、又继承了女仆给**深色侧栏**写的
+   米白字形色 #f8f3e8 —— 米白压浅灰轨道，实测对比度 1.76:1，图标基本看不见
+   （R1 走查：crop8-rail.png 第 3 个图标肉眼几乎空白）。底板归上面那条管，
+   这里补 svg 的颜色，别让米白留在浅色底上。 */
+body[data-dsh-maid-atelier][data-maid-sidebar-size='rail']
+    :is([data-pane='sidebar'], [class*='sidebarCol'])
+    [class*='panelRow'] svg {
+  color: #ebd29e;
+  stroke-width: 1.9;
+  filter: drop-shadow(0 1px 2px rgba(1, 7, 24, 0.48));
+}
+
 body[data-dsh-maid-atelier][data-maid-sidebar-size='rail']
     :is([data-pane='sidebar'], [class*='sidebarCol'])
     :is(
@@ -1413,6 +1560,7 @@ body[data-dsh-maid-atelier][data-maid-sidebar-size='rail']
       button[class*='newSession'],
       [class*='sectionHeader'] [class*='iconButton'],
       [class*='search'] [class*='searchButton'],
+      [class*='panelRow'],
       [data-maid-sidebar-footer] ${SETTINGS_TRIGGER_SELECTOR}
     ):is(:hover, :focus-visible) {
   color: #fff1ce;
@@ -1584,6 +1732,11 @@ body[data-dsh-maid-atelier] [data-maid-workspace-active] [class*='projectText'] 
   }
 }
 
+/* 会话行文字是**为深海军蓝侧栏**配的金箔字（#d7c8a8 / 时间 #c8b891），在侧栏
+   作用域把背景族修回海军蓝之后实测 8.8:1 / 6.4:1，两档都成立。
+   注意：如果哪天又看到它们"发白得读不出来"，**别改这里的颜色**——那是侧栏的
+   背景族又被浅色 token 盖住了（见 [data-pane='sidebar'] 作用域的注释）。
+   选中的那条走宝石蓝板，配奶白标题与金色时间，保持同一套对比。 */
 body[data-dsh-maid-atelier] [data-maid-session-row] {
   position: relative;
   height: 32px;
@@ -1720,6 +1873,8 @@ body[data-dsh-maid-atelier]
   height: auto;
   border: 1px solid rgba(226, 190, 112, 0.72);
   border-radius: 8px;
+  /* 半透明宝石蓝压在海军蓝侧栏上，合成 ≈rgb(65,92,159)，奶白标题 6.1:1、
+     金色时间 5.4:1——原值在正确的底色下就是达标的，无需加深。 */
   background: linear-gradient(
     90deg,
     rgba(82, 111, 184, 0.74),
@@ -2227,23 +2382,39 @@ body[data-dsh-maid-atelier] [data-composer-card] > * {
   z-index: 2;
 }
 
-body[data-dsh-maid-atelier] [data-composer-card] textarea {
+body[data-dsh-maid-atelier] [data-composer-card] :is(input, textarea) {
   caret-color: #405a99;
 }
 
-body[data-dsh-maid-atelier] [data-composer-card] textarea::placeholder {
-  color: #4d5d7f;
+/* 实测取证（勿按直觉改回 ::placeholder-only）：
+   composer 的提示不是原生占位符。上游把提示渲染成一个 ghost 节点
+   div[class$='_placeholder']，真正的输入字段是 input 且
+   placeholder 属性为空（见 ui-conversation/skeleton/InputBar.module.css
+   的 .placeholder { color: var(--dsw-alias-label-caption) }）。
+   之前这两条只写 textarea::placeholder 的规则因此**从未命中**。
+
+   而 --dsw-alias-label-caption 被 applySkin 以**行内** custom property 写在
+   body 上（index.ts 的 set('--dsw-alias-label-caption', palette.muted)），
+   行内声明压过任何作者样式表里的 token 重定义——所以深色下提示仍用浅色档的
+   muted #52618f，在夜色卡面（实测合成底 rgb(21,35,72)）上只有 2.84:1。
+
+   修法与其它卡面一致：不改全局调色板，直接给提示配一份自己的可读文案。
+   深色取 #8a9bc4（实测 5.4:1）；浅色沿用调色板 muted（5.96:1，达标）。 */
+body[data-dsh-maid-atelier] [data-composer-card] :is(input, textarea)::placeholder,
+body[data-dsh-maid-atelier] [data-composer-card] [class*='placeholder'] {
+  color: #52618f;
   opacity: 1;
 }
 
-body[data-dsh-maid-atelier][data-ds-dark-theme] [data-composer-card] textarea::placeholder {
-  color: #d5dff3;
+body[data-dsh-maid-atelier][data-ds-dark-theme] [data-composer-card] :is(input, textarea)::placeholder,
+body[data-dsh-maid-atelier][data-ds-dark-theme] [data-composer-card] [class*='placeholder'] {
+  color: #8a9bc4;
   opacity: 1;
 }
 
 /* The navy caret disappears against the dark composer card (≈2:1 contrast);
    the light periwinkle keeps the caret legible on the night palette. */
-body[data-dsh-maid-atelier][data-ds-dark-theme] [data-composer-card] textarea {
+body[data-dsh-maid-atelier][data-ds-dark-theme] [data-composer-card] :is(input, textarea) {
   caret-color: #bcd2ff;
 }
 
@@ -2269,6 +2440,80 @@ body[data-dsh-maid-atelier]:not([data-ds-dark-theme])
 body[data-dsh-maid-atelier]:not([data-ds-dark-theme])
   [data-slot='conversation.composer.dock'] > * [class*='sep'] {
   color: rgba(74, 93, 130, 0.55);
+}
+
+/* dock 里最右端的「上下文占用百分比」不是槽位的内容，而是槽位的**兄弟**：
+   上游 ui-conversation/skeleton/InputBar.tsx:484-489 是
+     <div className={css.dock}>{renderSlot('conversation.composer.dock')}<ContextMeter/></div>
+   所以上面那些 [data-slot='conversation.composer.dock'] > * 规则**永远够不到它**
+   —— 它拿不到那层浅瓷白，字直接压在宫殿背景图上。
+   （上一轮曾按 "dock 渐变的透明尾端" 去改 button[aria-haspopup]，实测打偏：
+     该选择器命中的是隔壁统计行的按钮，那条本来就 8.7:1。）
+
+   probe-dock-ink 实测（dock 子树逐个文字节点 + 逐色簇）：
+     light  "75%"  color rgb(82,97,143) 压 [121,139,180] -> 1.98（dock 作用域里
+            secondary/tertiary/caption/dimmed 四个 token 全是 palette.muted #52618f，
+            由 applySkin 以**行内 custom property** 钉在 <body>，见 index.ts:472）
+     light  "39 轮 374 步" color #172347 压 [185,196,221] -> 8.76（有浅瓷白那层）
+     dark   "39 轮 374 步" color #96a6c9 压 [44,54,75]   -> 3.37（开右栏后底变
+            [59,68,88] -> 2.96）
+     dark   "75%"          color #96a6c9 压 [29,36,50]   -> 3.53
+
+   处方：用 :has() 从槽位反查共同父容器（= dock），在**它这一层**重声明这一族 token
+   （行内声明只在 <body> 自身获胜，body 的子孙重声明对自身子树有效 —— 与 #root
+   深色墨色总闸同一机制），并把这层 wash 盖到 dock 的**每个**子级上，让百分比与
+   统计行走同一种底。wash 挂在 q_root 而不是 .trigger 上：trigger 自己的
+   :hover 背景声明要保持可用（默认 transparent 透出 wash，hover 时盖上去）。
+
+   修后复测（同一探针，浅/深 × chat/panel 四态）：
+     "75%"  light-chat 4.76 / light-panel 4.60 / dark-chat 7.55 / dark-panel 9.09
+     统计行 dark-chat 5.40 / dark-panel 4.58（修前 3.33 WARN / 2.96 FAIL）
+     wash 生效的硬证据：q_root 的 backgroundImage 由 none 变 img。
+
+   残余边界（**未验证**，别当成已覆盖）：wash 是不透明度 0.30 的半透层，读数的底线
+   仍随底图亮度走。默认女仆底（scrimStrength 0.7）下四态都 ≥4.6；若把 scrim 拉到很
+   暗，这个读数会重新掉到 3 左右 —— 那属于"整片聊天区都变暗"的全局问题，不是本族
+   单独能解决的，需要那一档再统一处理。 */
+body[data-dsh-maid-atelier]:not([data-ds-dark-theme])
+  div:has(> [data-slot='conversation.composer.dock']) {
+  --dsw-alias-label-secondary: #24345f;
+  --dsw-alias-label-tertiary: #22304f;
+  --dsw-alias-label-caption: #22304f;
+  --dsw-alias-label-dimmed: #2a3a5f;
+}
+
+body[data-dsh-maid-atelier]:not([data-ds-dark-theme])
+  div:has(> [data-slot='conversation.composer.dock']) > * {
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(248, 250, 255, 0.3) 10%,
+    rgba(248, 250, 255, 0.3) 90%,
+    transparent
+  );
+  border-radius: 24px;
+  backdrop-filter: blur(2px);
+}
+
+body[data-dsh-maid-atelier][data-ds-dark-theme]
+  div:has(> [data-slot='conversation.composer.dock']) {
+  --dsw-alias-label-secondary: #d3ddf2;
+  --dsw-alias-label-tertiary: #c3d0ea;
+  --dsw-alias-label-caption: #b9c7e4;
+  --dsw-alias-label-dimmed: #a9b8da;
+}
+
+body[data-dsh-maid-atelier][data-ds-dark-theme]
+  div:has(> [data-slot='conversation.composer.dock']) > * {
+  background: linear-gradient(
+    90deg,
+    transparent,
+    rgba(10, 20, 48, 0.48) 10%,
+    rgba(10, 20, 48, 0.48) 90%,
+    transparent
+  );
+  border-radius: 24px;
+  backdrop-filter: blur(2px);
 }
 
 body[data-dsh-maid-atelier][data-ds-dark-theme]
@@ -2395,7 +2640,10 @@ body[data-dsh-maid-atelier] [data-composer-card] [class*='trailing']
 
 body[data-dsh-maid-atelier] [data-composer-card] [class*='trailing']
   button[aria-haspopup='menu'] [class*='triggerEffort'] {
-  color: #a77c36;
+  /* 模型名后面那枚小字（「· High」）。原来的 #a77c36 压在瓷白卡片上实测
+     3.58:1（R2 扫描读到，字形簇 #a77c36 对底色 #f3f5fa）；压深到 #8a6628
+     后 ≈5.1:1，金色身份不变，只是不再是"淡金压白"。 */
+  color: #8a6628;
   font-family: var(--dsw-font-family);
   font-size: 11px;
   font-weight: 650;
@@ -2416,6 +2664,13 @@ body[data-dsh-maid-atelier][data-ds-dark-theme] [data-composer-card] [class*='tr
 body[data-dsh-maid-atelier][data-ds-dark-theme] [data-composer-card] [class*='trailing']
   button[aria-haspopup='menu'] [class*='triggerLabel'] {
   color: #e7ecf7;
+}
+
+/* 深色档下那枚小字不能继续用压深过的日用金（#8a6628 在夜卡片上只有 ≈1.9:1），
+   换成亮金，夜底上 ≈8:1。 */
+body[data-dsh-maid-atelier][data-ds-dark-theme] [data-composer-card] [class*='trailing']
+  button[aria-haspopup='menu'] [class*='triggerEffort'] {
+  color: #d9bb76;
 }
 
 body[data-dsh-maid-atelier][data-ds-dark-theme] [data-composer-card] [class*='trailing']
@@ -2551,7 +2806,7 @@ body[data-dsh-maid-atelier][data-ds-dark-theme] [data-terminal] {
   --dsw-alias-markdown-code-block: rgba(10, 20, 48, 0.97);
   --dsw-alias-label-primary: #edf1fa;
   --dsw-alias-label-secondary: #bdc9e3;
-  --dsw-alias-label-tertiary: #96a6c9;
+  --dsw-alias-label-tertiary: #9dabce;
   color: #edf1fa;
 }
 
@@ -3138,7 +3393,7 @@ body[data-dsh-maid-atelier][data-ds-dark-theme] :is([role='dialog'], [role='menu
   --dsw-alias-label-primary: #e7ecf7;
   --dsw-alias-label-primary-bluish: #d5dff3;
   --dsw-alias-label-secondary: #bdc9e3;
-  --dsw-alias-label-tertiary: #96a6c9;
+  --dsw-alias-label-tertiary: #9dabce;
   --dsw-alias-label-caption: #7f90b4;
   --dsw-alias-border-l1: rgba(151, 169, 216, 0.2);
   --dsw-alias-border-l2-darkmode-thin: rgba(151, 169, 216, 0.3);
@@ -3155,7 +3410,13 @@ body[data-dsh-maid-atelier][data-ds-dark-theme] :is([role='dialog'], [role='menu
 }
 
 /* Keep the settings surface above the composer while leaving the composer
-   visible as a dimmed, blurred background layer. */
+   visible as a dimmed, blurred background layer.
+   注意（R1 实测）：这条在当前的注入顺序下**已被 settings-perf 取代**——
+   它把 --dsw-alias-bg-layer-2 压成了不透明的表面色（!important），
+   并把 backdrop-filter 全部关掉，所以半透明 + blur 的意图不会生效。
+   留着它是为了保住"面板要压住 composer"这个意图的书面记录；
+   但也正因为这里是 background 简写，它会重置 background-image，
+   任何想给弹窗加渐变/纹理的规则都必须绕开它（见下面的 ::before 分段表面）。 */
 body[data-dsh-maid-atelier]
   [data-slot='sidebar.settings']
   [role='presentation']
@@ -3170,6 +3431,193 @@ body[data-dsh-maid-atelier][data-ds-dark-theme]
   [role='presentation']
   > [role='dialog'][aria-modal='true'] {
   --dsw-alias-bg-layer-2: rgba(24, 40, 80, 0.82);
+}
+
+/* ── 设置弹窗的女仆身份 ──────────────────────────────────────────────────
+   R1 走查发现：设置弹窗在女仆主题下是一块**素白板**（纯 #f6f8fd + 灰字），
+   和海军蓝 + 金 + 宫殿的界面完全不搭。   根因有两层：
+     1) 上游 .panel 画的是 var(--dsw-alias-bg-layer-2)，而 settings-perf
+        为了「去掉毛玻璃后不能透出壁纸」把它压成了不透明的 #f6f8fd；
+     2) 女仆表只在弹窗上重置了文字/边框/hover token，没管表面色。
+   修法刻意**只走 token**：上游 SettingsRoot.module.css 的 .panel / .navCell /
+   .mask 读的都是具名变量（不是构建哈希类名），所以整块弹窗可以纯 token 换皮——
+   上游前端重建后不会静默失效。
+   表面色本身由 settings-perf 持有（它必须不透明），它从这里声明的
+   --dsh-settings-surface-* 取色，取不到才回退上游默认值。 */
+body[data-dsh-maid-atelier] {
+  --dsh-settings-surface-light: #f9f7f2;
+  --dsh-settings-surface-dark: #0b1430;
+}
+
+body[data-dsh-maid-atelier] [role='dialog'][aria-modal='true'] {
+  --dsw-alias-bg-layer-1: #f3efe5;
+  --dsw-alias-bg-layer-3: #eae4d6;
+  --dsw-alias-bg-module-platform: #f3efe5;
+  --dsw-alias-bg-multi-select: #eae4d6;
+  --dsw-alias-label-primary: #1b2748;
+  --dsw-alias-label-primary-bluish: #26365f;
+  --dsw-alias-label-secondary: #55628a;
+  /* 说明文字（设置项下面那行 13px）：原来的 #6f7c99 压在瓷白面板 #f9f7f2 上
+     实测只有 3.92:1，低于正文门槛 4.5（R2 可读性扫描读到，字形簇与底色簇
+     都验证过是它）。压深到 #5f6b85 后 ≈5.0:1，仍然明显轻于 secondary，
+     层级没变。 */
+  --dsw-alias-label-tertiary: #5f6b85;
+  --dsw-alias-label-caption: #8a94aa;
+  /* 分隔线走暖金：设置页里每一行之间、每个分区之间都是这个 token，
+     换成金色后整块面板立刻有"工坊"的手作感，而不再是素白表格。 */
+  --dsw-alias-border-l1: rgba(176, 145, 88, 0.32);
+  --dsw-alias-border-l2: rgba(176, 145, 88, 0.46);
+  --dsw-alias-border-l2-darkmode-thin: rgba(176, 145, 88, 0.4);
+  --dsw-alias-button-elevated-fill: #f3efe5;
+  --dsw-alias-button-floating-fill: #f9f7f2;
+  --dsw-alias-button-floating-hover: #efe9db;
+  --dsw-alias-interactive-bg-hover-solid: #efe9db;
+  --dsw-specific-input-major: #f4f1e9;
+  --dsw-specific-sidebar-nav-item-hover: rgba(82, 106, 168, 0.12);
+  --dsw-specific-sidebar-nav-item-active: rgba(197, 164, 104, 0.26);
+  --dsw-specific-sidebar-nav-item-active-accent: #b08d4e;
+  /* .panel 的阴影也走 token：外层浮起（金线描边交给下面的 ::before，
+     因为 ::before 画在 .panel 的 inset 阴影之上，写在这里会被自己的伪元素盖住）。 */
+  --dsw-elevation-prominent:
+    0 34px 80px rgba(6, 14, 38, 0.34),
+    0 3px 12px rgba(6, 14, 38, 0.18);
+  /* 必须显式接管 box-shadow：本表上文那条
+     [data-dsh-maid-atelier] :is([role='dialog'], [role='menu'], ...)
+     已经给弹窗写了 box-shadow: var(--maid-shadow)，而它只声明 token
+     不会改变实际画的东西——R1 实测 .panel 算出来的是 maid-shadow，
+     我写的金线环根本没参与绘制。这条特异性更高，直接赢。 */
+  box-shadow: var(--dsw-elevation-prominent);
+}
+
+/* ── 导航列独立表面 + 顶部一道极淡的墨蓝影 ────────────────────────────
+   分段位置用上游 SettingsRoot.module.css 里写死的 .nav{width:188px}
+   （flex:none，窄视口也不缩），所以 188px 处硬分段是可靠的：左段给导航列
+   一层蓝灰底，右边界压一条金线，面板立刻有"侧栏 + 内容页"的层次，
+   而不是一整块白板。上游若改这个宽度，表现是分段错位（可见但不致命）。
+
+   为什么不用 .panel 自己的 background-image（R1 实测踩到）：
+     上游 .panel 写的是 background: var(--dsw-alias-bg-layer-2)（简写），
+     而本表上文那条
+       [data-slot='sidebar.settings'] [role='presentation'] > [role='dialog']
+     规则也用了 background 简写、且特异性更高（多一个属性选择器）。
+     简写会把 background-image 重置回 none → 写在弹窗元素上的分段渐变
+     在 computed style 里直接是空串（hasNavSplit=false，看着像"选择器没生效"）。
+   换成伪元素就绕开整条简写链：没有任何规则对 ::before 写 background 简写。
+   z-index:-1 让它在 .panel 自身底色的上面、在导航/正文文字下面
+   ——.panel 是 position:relative + z-index:1，本身构成层叠上下文，
+   负 z 子层画在"元素自身底色"之上、"常规流内容"之下，正好是我们要的那一层。
+   圆角与裁切由 .panel 的 overflow:hidden 自动负责，不需要另写 radius。
+
+   金线描边也画在这层：inset 阴影在同元素的 background 之上（规范顺序是
+   外阴影 → 背景色 → 背景图 → 内阴影 → 边框），所以环不会被自己的渐变盖掉；
+   而若把它写在 .panel 上，就会被这一层伪元素盖住（伪元素画在 .panel 的内阴影之上）。 */
+body[data-dsh-maid-atelier] [role='dialog'][aria-modal='true']::before {
+  content: '';
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  pointer-events: none;
+  box-shadow: inset 0 0 0 1px rgba(197, 164, 104, 0.5);
+  background-image:
+    linear-gradient(
+      90deg,
+      rgba(230, 236, 249, 0.94) 0 188px,
+      rgba(197, 164, 104, 0.42) 188px 189px,
+      rgba(0, 0, 0, 0) 189px
+    ),
+    linear-gradient(180deg, rgba(23, 35, 71, 0.07), rgba(23, 35, 71, 0) 13%);
+}
+
+body[data-dsh-maid-atelier][data-ds-dark-theme] [role='dialog'][aria-modal='true'] {
+  --dsw-alias-bg-layer-1: #131f42;
+  --dsw-alias-bg-layer-3: #1b2a57;
+  --dsw-alias-bg-module-platform: #131f42;
+  --dsw-alias-bg-multi-select: #1b2a57;
+  /* 字号色必须在这里**重新声明**：下面那条浅色规则与上面既有的暗档规则
+     （body[..][data-ds-dark-theme] :is([role='dialog'],..)）特异性相同，
+     而它更靠后 → 暗档下会把墨蓝字盖到墨蓝底上（S2 截图实测：整块面板几乎
+     看不见字）。同特异性靠"后写者胜"，所以这里补一遍。 */
+  --dsw-alias-label-primary: #e7ecf7;
+  --dsw-alias-label-primary-bluish: #d5dff3;
+  --dsw-alias-label-secondary: #bdc9e3;
+  --dsw-alias-label-tertiary: #9dabce;
+  --dsw-alias-label-caption: #7f90b4;
+  --dsw-alias-border-l1: rgba(197, 164, 104, 0.22);
+  --dsw-alias-border-l2: rgba(197, 164, 104, 0.34);
+  --dsw-alias-border-l2-darkmode-thin: rgba(197, 164, 104, 0.28);
+  --dsw-alias-button-elevated-fill: #16224a;
+  --dsw-alias-button-floating-fill: #131f42;
+  --dsw-alias-button-floating-hover: #1f2f63;
+  --dsw-alias-interactive-bg-hover-solid: #1b2a57;
+  --dsw-specific-input-major: #101a3a;
+  --dsw-specific-sidebar-nav-item-hover: rgba(142, 165, 218, 0.16);
+  --dsw-specific-sidebar-nav-item-active: rgba(197, 164, 104, 0.3);
+  --dsw-specific-sidebar-nav-item-active-accent: #e2cfaa;
+  --dsw-elevation-prominent:
+    0 34px 84px rgba(2, 6, 20, 0.62),
+    0 3px 12px rgba(2, 6, 20, 0.4);
+}
+
+body[data-dsh-maid-atelier][data-ds-dark-theme] [role='dialog'][aria-modal='true']::before {
+  box-shadow: inset 0 0 0 1px rgba(197, 164, 104, 0.42);
+  background-image:
+    linear-gradient(
+      90deg,
+      rgba(24, 38, 80, 0.96) 0 188px,
+      rgba(197, 164, 104, 0.4) 188px 189px,
+      rgba(0, 0, 0, 0) 189px
+    ),
+    linear-gradient(180deg, rgba(226, 207, 170, 0.06), rgba(226, 207, 170, 0) 13%);
+}
+
+/* 导航列下半是空的（6 个导航项只占 260px，而面板固定 800px 高），一大片纯色
+   看着像没做完。在列底压一枚"落款"分隔：一道渐隐金线 + 中央一颗金点。
+   刻意不用文字、不用图标字体（换字体就变形），也不去选 nav 元素
+   （nav 的类名是构建哈希，上游重建后会静默失效）——纯 CSS 形状 + 写死列宽。 */
+body[data-dsh-maid-atelier] [role='dialog'][aria-modal='true']::after {
+  content: '';
+  position: absolute;
+  left: 24px;
+  bottom: 26px;
+  width: 140px;
+  height: 7px;
+  pointer-events: none;
+  background-image:
+    radial-gradient(circle at 50% 50%, rgba(176, 145, 88, 0.72) 0 2.4px, rgba(176, 145, 88, 0) 2.4px),
+    linear-gradient(
+      90deg,
+      rgba(176, 145, 88, 0) 0%,
+      rgba(176, 145, 88, 0.4) 20%,
+      rgba(176, 145, 88, 0.4) 80%,
+      rgba(176, 145, 88, 0) 100%
+    );
+  background-size: 7px 7px, 100% 1px;
+  background-position: 50% 50%, 0 50%;
+  background-repeat: no-repeat;
+}
+
+body[data-dsh-maid-atelier][data-ds-dark-theme] [role='dialog'][aria-modal='true']::after {
+  background-image:
+    radial-gradient(circle at 50% 50%, rgba(226, 207, 170, 0.72) 0 2.4px, rgba(226, 207, 170, 0) 2.4px),
+    linear-gradient(
+      90deg,
+      rgba(226, 207, 170, 0) 0%,
+      rgba(226, 207, 170, 0.38) 20%,
+      rgba(226, 207, 170, 0.38) 80%,
+      rgba(226, 207, 170, 0) 100%
+    );
+  background-size: 7px 7px, 100% 1px;
+  background-position: 50% 50%, 0 50%;
+  background-repeat: no-repeat;
+}
+
+/* 遮罩：上游 mask 读 --dsw-alias-bg-mask-1，默认是中性黑。换成海军蓝，
+   让整个弹窗层（而不是只有面板）也属于女仆的夜色调。mask 是 .panel 的
+   同级兄弟，选不到它的子代，只能用 :has() 从 overlay 反查——overlay 自带
+   role="presentation"（上游 SettingsRoot.tsx:85），是稳定属性。 */
+body[data-dsh-maid-atelier]
+  [role='presentation']:has(> [role='dialog'][aria-modal='true']) {
+  --dsw-alias-bg-mask-1: rgba(9, 19, 51, 0.44);
 }
 
 /* The frameless title bar (Web-app overlay / desktop shell) carries a text
@@ -3283,14 +3731,28 @@ body[data-dsh-maid-atelier]:not([data-maid-chat-active]) [data-skin-chrome='char
    已不存在（消息行现在是 ui-chat 的 MessageItem / .bubble / .userRow），
    data-input-mirror 也无任何代码写入（全仓 grep 只命中本文件生成的 .d.ts）。
    结果是所有"自带背景的内容面"落到 z=2/3 的女仆立绘之下 → 立绘压住消息与工具卡。
-   与其继续逐个猜会重命名的模块类，不如抬整个中间列：中间列在本主题里本来就是
-   background: transparent（见上方规则），抬升它不会挡住立绘——立绘在留白处照旧
-   可见，只是任何真正画像素的内容都会盖过它。z=5 高于 character-stage 的 z=2
-   （非聊天）/z=3（聊天），低于 frame 的 overlayLayer(20)、拖拽 handle(11) 与
-   侧栏弹窗(1000)。
+   2026-09-25 修正：这里原先抬的是**整条中间列**（[class*='centerCol'] { z-index: 5 }），
+   那是错的，会把女仆立绘整只盖掉（用户报"女仆还是没有"）。像素级取证
+   （.worktrees/probe-maid-paint.mjs + probe-maid-cover.mjs + diff-shots.mjs）：
+     - 隐藏 [data-skin-chrome='character-stage'] 整层，阈值>8 的整屏变化像素 = 0
+       → 立绘在盘面上 0 像素。而元素在、图 HTTP 200、computed style 全绿
+       （display/visibility/opacity/rect 全正常）——全是代理量假绿，必须用像素判；
+     - 只把 centerCol 的 z-index:5 去掉，左立绘 rect 内 43.5%、右立绘 39.2% 的像素
+       立刻出现（差异 bbox x[302..1434] y[61..869]）；
+     - 原因：centerCol 内的 [data-phase]（会话内容根节点）自己画了一份
+       "scrim 渐变 + 宫殿 webp" 背景图（和 frame 上那份是同一个 44826 字符的
+       background-image）。centerCol 一旦成为 z-index:5 的层叠上下文，这份宫殿层
+       就被整体抬到立绘（非聊天 z=2 / 聊天 z=3）之上。宫殿与消息面在同一个子树里，
+       所以"抬消息"必然连带"抬宫殿"。
+   因此改为只抬会话内容层 [data-conversation-content]：它自己的 background-image
+   是 none，宫殿在它的父节点 [data-phase] 上 —— 内容照旧盖在立绘之上，宫殿留在
+   立绘之下。实测与"只还原 centerCol 的 z-index"逐像素相同（差异 0 像素，最大 Δ=2），
+   宫殿区/侧栏区变化 0.00%。也保留 [data-conversation-scroll] 作为同一层的兜底。
+   抬升后仍低于 frame 的 overlayLayer(1000) 与侧栏弹窗，不影响弹窗层级。
    注意：本文件整体是一个模板字符串，注释里绝不能出现未转义的反引号——那会提前
    闭合模板串，构建报 PARSE_ERROR，而源码看起来完全正常。 */
-body[data-dsh-maid-atelier] [class*='centerCol'] {
+body[data-dsh-maid-atelier]
+  :is([data-conversation-content], [data-conversation-scroll]) {
   position: relative;
   z-index: 5;
 }

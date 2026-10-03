@@ -6,6 +6,7 @@
  */
 import type { ThemeDefinition, ThemeTokens } from '@deepseek-ai/dsh-client-ui-theme/client'
 import { WALLPAPERS, type Wallpaper } from './wallpapers.ts'
+import { WALLPAPERS_DARK } from './wallpapers-dark.ts'
 import { WALLPAPER_THUMBS } from './wallpapers-thumbs.ts'
 import { DEFAULT_SCRIM_STRENGTH } from '../dream-settings.ts'
 
@@ -220,6 +221,60 @@ function wallpaperFor(id: string): Wallpaper | undefined {
   const thumb = WALLPAPER_THUMBS[id]
   return thumb === undefined ? w : { ...w, thumb }
 }
+
+/**
+ * Resolve a preset's wallpaper for the current host appearance.
+ *
+ * Some presets keep one palette but ship two artworks (a day and a night
+ * version). Their `definition.colorScheme` stays `light` on purpose — the
+ * palette is a designed brand colour, not an appearance — so the *artwork* has
+ * to be picked at paint time from the host's dark attribute instead.
+ *
+ * Only the url/focus of the night variant replace the base entry; the preview
+ * thumbnail is borrowed from the day variant (the picker keeps showing the
+ * theme's signature art, and night artwork carries no thumbnail of its own).
+ */
+export function wallpaperForMode(id: string, dark: boolean): Wallpaper | undefined {
+  const base = WALLPAPERS[id]
+  if (base === undefined) return undefined
+  const night = dark ? WALLPAPERS_DARK[id] : undefined
+  const source = night === undefined ? base : { ...night, thumb: base.thumb }
+  const thumb = WALLPAPER_THUMBS[id]
+  return thumb === undefined ? source : { ...source, thumb }
+}
+
+/**
+ * Night backdrop colour for the readability scrim, when a **light** preset is
+ * rendered in the host's dark appearance.
+ *
+ * `buildScrim` colours its scrim with `palette.background`, which for the
+ * light-only branded palettes is paper white even while the host is dark.
+ * `applySkin` then writes that scrim into `--dsw-alias-bg-base` — the token the
+ * shell paints the frame and `[data-phase]` with — **over** the night artwork.
+ * Result: a paper wash across a midnight palette.
+ *
+ * Evidence (probe-maid-dark-backdrop + probe-turntail-ink, 2026-10-02/03):
+ *   · the skin's own `--dsw-alias-bg-base: transparent` in its dark block never
+ *     applied — `applySkin` writes that token *inline* on `<body>`, and an
+ *     inline declaration outranks every author rule that lacks `!important`
+ *     (the sibling maid-whale skin only wins its dark backdrop because it does
+ *     spell `!important`);
+ *   · the turn-tail label "用时 3分53秒" therefore sat on a mid grey-blue
+ *     `[122,133,152]` instead of a night surface → 1.44:1 (dark) where the same
+ *     label reads 5.28:1 in light;
+ *   · no ink fixes that backdrop: a mid-tone needs dark ink, and the darker
+ *     panel-open reading `[68,89,123]` needs *light* ink (max 2.96:1 with pure
+ *     black). The backdrop itself has to change.
+ *   · re-measured after the fix, the same label reads 5.01:1 predicted /
+ *     `dark-chat/msgText#1` in the sweep.
+ *
+ * Only ids listed here are affected, so dark-native presets and custom themes
+ * keep the scrim their palette declares. Values mirror the dark page base each
+ * skin already declares in CSS (`background-color`).
+ */
+export const NIGHT_SCRIM: Readonly<Record<string, string>> = Object.freeze({
+  'maid-atelier': '#080f27',
+})
 
 /** Map a shipped preset onto its alias tokens. */
 function toTokens(id: string, p: DreamSkinPalette): ThemeTokens {

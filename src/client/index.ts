@@ -17,7 +17,7 @@ import type {} from '@deepseek-ai/dsh-client-ui-settings/client'
 import type {} from '@deepseek-ai/dsh-client-ui-renderer/client'
 import type { BoundActions } from '@deepseek-ai/dsh-client-ui-slots'
 import type { ThemeSnapshot } from '@deepseek-ai/dsh-client-ui-theme/client'
-import { DREAM_SKIN_PRESETS, buildAmbient, buildScrim } from './themes.ts'
+import { DREAM_SKIN_PRESETS, NIGHT_SCRIM, buildAmbient, buildScrim, wallpaperForMode } from './themes.ts'
 import type { DreamSkinPalette, WallpaperKnobs, WallpaperTweak } from './themes.ts'
 import type { Wallpaper } from './wallpapers.ts'
 import { applyGlass, applySelection, initWallpaperLayer, readGlass, readWallpaper, setWallpaper } from './wallpaper-layer.ts'
@@ -226,6 +226,18 @@ function customSkin(custom: CustomThemeInput | undefined): { palette: DreamSkinP
 const MAID_THEME_ID = 'maid-whale'
 const MAID_ATELIER_THEME_ID = 'maid-atelier'
 
+/**
+ * Skins whose palette is a fixed brand colour but whose *surfaces* repaint for
+ * the host's dark appearance (night artwork, deeper panels).
+ *
+ * Their `definition.colorScheme` necessarily stays `light` — it describes the
+ * palette, not the appearance — so anything that has to choose between a light
+ * and a dark surface (the settings modal) cannot read `colorScheme` for them.
+ * Projected onto <body> as `data-dsh-skin-adaptive` so stylesheets can follow
+ * the host appearance instead of the preset's static scheme.
+ */
+const ADAPTIVE_SKINS = new Set([MAID_THEME_ID, MAID_ATELIER_THEME_ID])
+
 /** DOM event the whale widget listens to for the baby-whale parade. */
 const SUBAGENT_EVENT = 'dshw:subagents'
 
@@ -285,6 +297,27 @@ function initSubagentWatcher(ctx: ClientContext): () => void {
  * so blurred wallpapers render here instead of the body background. Null when
  * no theme wallpaper needs it.
  */
+/**
+ * Palette the readability scrim is built from, given the host appearance.
+ *
+ * palette.background doubles as the scrim colour, so a light-only branded
+ * palette keeps washing the backdrop with paper white even while the host is
+ * dark — and the shell paints that scrim over the night artwork, because this
+ * value is what ends up in --dsw-alias-bg-base. In dark appearance the maid
+ * skins therefore turned a midnight palette into a mid grey-blue surface; see
+ * themes.ts NIGHT_SCRIM for the measurements.
+ *
+ * Only the scrim colour is swapped: every other token (panels, accents, ink)
+ * still comes from the preset's own palette, which is the point of a fixed
+ * brand palette. Custom themes and dark-native presets have no entry and keep
+ * their palette's colour.
+ */
+function scrimPalette(themeId: string, palette: DreamSkinPalette): DreamSkinPalette {
+  if (!document.body.hasAttribute('data-ds-dark-theme')) return palette
+  const night = NIGHT_SCRIM[themeId]
+  return night === undefined ? palette : { ...palette, background: night }
+}
+
 let themeWallpaperEl: HTMLDivElement | null = null
 
 function setThemeWallpaperLayer(
@@ -375,6 +408,7 @@ function applySkin(themeId: string, scrimStrength: number, custom?: CustomThemeI
     ? (() => {
       // custom 主题无明暗信息：清掉标记，回退宿主偏好判断
       document.body.removeAttribute('data-dsh-skin-mode')
+      document.body.removeAttribute('data-dsh-skin-adaptive')
       return customSkin(custom)
     })()
     : (() => {
@@ -383,11 +417,20 @@ function applySkin(themeId: string, scrimStrength: number, custom?: CustomThemeI
       // 发布主题明暗：设置页背景（settings-perf）据此适配暗/亮，
       // 不依赖宿主偏好 data-ds-dark-theme（宿主亮色 + 暗色主题时会误判）。
       document.body.setAttribute('data-dsh-skin-mode', preset.definition.colorScheme)
-      return { palette: preset.palette, wallpaper: preset.wallpaper }
+      // 固定品牌色但会随宿主明暗换皮的皮肤（女仆系）：声明自己是自适应的，
+      // 让只认明暗、不认色系的表面（设置弹窗）跟随宿主而不是色系。
+      document.body.toggleAttribute('data-dsh-skin-adaptive', ADAPTIVE_SKINS.has(themeId))
+      // The wallpaper must be resolved at paint time, not from the frozen
+      // preset: presets that ship a night artwork keep their palette but swap
+      // the backdrop, and this token is the only thing the shell paints.
+      const wallpaper = wallpaperForMode(themeId, document.body.hasAttribute('data-ds-dark-theme'))
+        ?? preset.wallpaper
+      return { palette: preset.palette, wallpaper }
     })()
   if (skin === undefined) {
     // custom 主题无明暗信息：清掉标记，回退宿主偏好判断
     if (themeId !== 'custom') document.body.removeAttribute('data-dsh-skin-mode')
+    document.body.removeAttribute('data-dsh-skin-adaptive')
     clear()
     removeThemeWallpaperLayer()
     applyGlass()
@@ -404,14 +447,17 @@ function applySkin(themeId: string, scrimStrength: number, custom?: CustomThemeI
   if (wp.focusX >= 0) focus.focusX = wp.focusX
   if (wp.focusY >= 0) focus.focusY = wp.focusY
   const scrim = wp.scrim >= 0 ? wp.scrim : scrimStrength
+  // The scrim colour has to follow the artwork it covers: a light preset in a
+  // dark host otherwise paints its paper wash over the night palace.
+  const bgPalette = scrimPalette(themeId, skin.palette)
   if (useLayer && skin.wallpaper !== undefined) {
-    setThemeWallpaperLayer(skin.palette, skin.wallpaper, scrim, { blur, ...focus })
+    setThemeWallpaperLayer(bgPalette, skin.wallpaper, scrim, { blur, ...focus })
   } else {
     removeThemeWallpaperLayer()
   }
   const bg = !useLayer && skin.wallpaper !== undefined
-    ? buildScrim(skin.palette, skin.wallpaper, scrim, focus)
-    : buildAmbient(skin.palette)
+    ? buildScrim(bgPalette, skin.wallpaper, scrim, focus)
+    : buildAmbient(bgPalette)
   const set = (token: string, value: string): void => {
     if (weActive && WE_OVERRIDDEN_TOKENS.has(token)) return
     style.setProperty(token, value)
@@ -636,6 +682,15 @@ export function apply(ctx: ClientContext): void {
     const dark = document.body.hasAttribute('data-ds-dark-theme')
     if (maid !== undefined) maid.setMode(dark ? 'dark' : 'light')
     if (atelier !== undefined) atelier.setMode(dark ? 'dark' : 'light')
+    // Repaint the skin's backdrop. `--dsw-alias-bg-base` is the only wallpaper
+    // the shell paints, and it is written by applySkin — syncBackdrop() also
+    // swaps body.background-image, but that sits underneath the shell and is
+    // never seen. Without this call a preset with a night artwork kept its
+    // light-palace scrim through every appearance switch.
+    const current = readPrefs()
+    if (!BUILTIN_MODES.has(current.themeId)) {
+      applySkin(current.themeId, current.scrimStrength, current.customTheme)
+    }
   })
   darkObserver.observe(document.body, { attributes: true, attributeFilter: ['data-ds-dark-theme'] })
 

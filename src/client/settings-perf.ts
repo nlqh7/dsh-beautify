@@ -40,18 +40,28 @@ const SETTINGS_PERF_CSS = `
    transparent) so the palace shows through the app shell. The settings panel
    paints with --dsw-alias-bg-layer-2 (rgba 0.84-0.92), so without the glass
    the modal content reads straight through. Restore opaque surfaces on the
-   dialog while it is open. Dark detection uses the theme's own mode marker
-   (data-dsh-skin-mode, set by the beautify skin) first, then falls back to
-   the host preference — a dark beautify theme with a light host must still
-   get a dark settings panel. */
+   dialog while it is open.
+
+   Which opaque colour: a skin may hand us its own pair through
+   --dsh-settings-surface-light / -dark (declared on <body> by the maid sheet);
+   var() falls back to the stock pair so this sheet stays skin-independent.
+
+   Which of the two: the skin's own scheme wins normally, so a dark beautify
+   theme on a light host still gets a dark panel. The exception is a skin that
+   declared data-dsh-skin-adaptive — its palette is a fixed brand colour while
+   its surfaces repaint for the host (see ADAPTIVE_SKINS in index.ts), so there
+   the host's appearance decides. Before that marker existed, maid-atelier under
+   a dark host was pinned to the near-white panel (#f6f8fd) because its
+   colorScheme is light, and the modal was unreadably bright. */
 [data-dsh-settings-perf] body:has([role="dialog"][aria-modal="true"])[data-dsh-skin-mode="dark"] [role="dialog"][aria-modal="true"],
+[data-dsh-settings-perf] body:has([role="dialog"][aria-modal="true"])[data-dsh-skin-adaptive][data-ds-dark-theme] [role="dialog"][aria-modal="true"],
 [data-dsh-settings-perf] body:has([role="dialog"][aria-modal="true"])[data-ds-dark-theme]:not([data-dsh-skin-mode="light"]) [role="dialog"][aria-modal="true"] {
-  --dsw-alias-bg-base: #10172b !important;
-  --dsw-alias-bg-layer-2: #10172b !important;
+  --dsw-alias-bg-base: var(--dsh-settings-surface-dark, #10172b) !important;
+  --dsw-alias-bg-layer-2: var(--dsh-settings-surface-dark, #10172b) !important;
 }
 [data-dsh-settings-perf] body:has([role="dialog"][aria-modal="true"]) [role="dialog"][aria-modal="true"] {
-  --dsw-alias-bg-base: #f6f8fd !important;
-  --dsw-alias-bg-layer-2: #f6f8fd !important;
+  --dsw-alias-bg-base: var(--dsh-settings-surface-light, #f6f8fd) !important;
+  --dsw-alias-bg-layer-2: var(--dsh-settings-surface-light, #f6f8fd) !important;
 }
 
 /* While the settings modal is open, drop the full-viewport character stage

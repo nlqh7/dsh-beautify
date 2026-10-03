@@ -2,7 +2,7 @@
 
 > DSH 社区插件 · 一站式美化包：鲸鱼光标 / 子代理小鲸鱼 / 29 套主题 / 自定义皮肤 / 声音与设置
 
-[![npm version](https://img.shields.io/badge/version-0.4.0-blue)](#) [![dsh](https://img.shields.io/badge/dsh-%E2%89%A50.1.6--alpha.2-blueviolet)](#) [![bundle](https://img.shields.io/badge/bundle-4.6MB-success)](#) [![license](https://img.shields.io/badge/license-CC--BY--NC--SA--4.0-orange)](#license)
+[![npm version](https://img.shields.io/badge/version-0.5.0-blue)](#) [![dsh](https://img.shields.io/badge/dsh-%E2%89%A50.1.6--alpha.2-blueviolet)](#) [![bundle](https://img.shields.io/badge/bundle-4.6MB-success)](#) [![license](https://img.shields.io/badge/license-CC--BY--NC--SA--4.0-orange)](#license)
 
 每个子代理都是一只**独立、完整、可互动**的小鲸鱼，分布在主鲸鱼周围；主鲸鱼本身可拖动、点击回弹、换皮；29 套主题、10 态光标，所有声音可独立控制。
 
@@ -61,6 +61,12 @@
 
 - 聊天界面女仆**大尺寸清晰显示**（96vh），输入区/操作按钮始终浮在女仆之上不挡操作
 - 新会话 / 新绘画等非聊天视图女仆固定在背景层（z=2），让位给弹窗与输入区；**轨迹视图不显示女仆**（时间线不被大立绘遮挡）
+- **深浅两档是两套底图**：浅色档是瓷白纸面 + 宫殿底图，深色档换成**夜宫图**（同一幅画的夜版），且深色档的可读性遮罩用**夜底色**而不是纸白 —— 否则夜版会被洗成灰蓝中调，浅墨文字（回合尾的用时 / 时间戳、上下文占用百分比）会掉到 1.4:1
+- 深色档下所有元信息墨色都按"夜海军蓝底"重校过：`label-tertiary` 由 `#96a6c9` 抬到 `#9dabce`（最窄列里实测 4.41 → 4.61+）
+
+![深海女仆工坊 · 浅色档：瓷白纸面聊天态](docs/screenshots/11-maid-chat-light.png)
+
+![深海女仆工坊 · 深色档：夜宫图 + 夜底 scrim + 深色玻璃卡](docs/screenshots/12-maid-chat-dark.png)
 
 ### 🐋 挂件菜单与气泡（上游 v0.2.8 已融合）
 
@@ -99,6 +105,11 @@
 | `05-we-wallpaper.png` | WE 壁纸生效：冲田总司樱花壁纸全屏，主题样式挂起、UI 毛玻璃穿透显示 |
 | `06-we-picker.png` | WE 壁纸选择器：扫描本机 Wallpaper Engine 壁纸缩略图网格 |
 | `07-maid-atelier.png` | 默认主题深海女仆工坊：左右双女仆立绘 + 主鲸鱼 + 余额气泡 |
+| `08-maid-settings-light.png` | 设置弹窗（浅色档）区域裁图：编号导航 + 外观/主题面板 |
+| `09-maid-settings-dark.png` | 同一弹窗的深色档：弹窗跟随主题自身明暗，不跟宿主 |
+| `10-maid-sidebar.png` | 会话侧栏竖条：海军蓝底 + 金边 + 会话行 / 工作区 |
+| `11-maid-chat-light.png` | 聊天态浅色档整屏：瓷白纸面 + 宫殿底图 + 双女仆立绘 |
+| `12-maid-chat-dark.png` | 聊天态深色档整屏：夜宫图 + 夜底 scrim + 深色玻璃卡 |
 
 ---
 
