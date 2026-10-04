@@ -235,7 +235,11 @@
 .groupCount {
   padding: 1px 8px;
   border-radius: 999px;
-  background: var(--dsw-alias-bg-layer-1);
+  /* Was bg-layer-1 — the very token .root paints its own card with, so the pill
+     composited to zero delta against its parent and read as bare text, while the
+     "选择" chip beside it kept its fill. Same surface as .groupGo; hierarchy is
+     carried by the tertiary ink instead of by an invisible background. */
+  background: var(--dsw-alias-interactive-bg-hover);
   color: var(--dsw-alias-label-tertiary);
   font-size: 11px;
   font-variant-numeric: tabular-nums;
@@ -286,7 +290,9 @@
   flex-direction: column;
   padding: 0;
   border: 1px solid var(--dsw-alias-border-l1);
-  border-radius: 8px;
+  /* Was 8px, while the skin-preset tile (.tile) of the same shape uses 10px.
+     One tile radius for both grids. */
+  border-radius: 10px;
   overflow: hidden;
   background: var(--dsw-alias-bg-layer-1);
   cursor: pointer;
@@ -384,7 +390,7 @@
 
 .textInput:focus {
   outline: none;
-  border-color: var(--dsw-alias-brand, #4d6bfe);
+  border-color: var(--dsw-alias-brand-primary);
 }
 
 .colorRow {
@@ -468,7 +474,7 @@
   cursor: pointer;
 }
 .uploadBtn:hover {
-  border-color: var(--dsw-alias-brand, #4d6bfe);
+  border-color: var(--dsw-alias-brand-primary);
 }
 
 /* Per-state cursor toggles (which states use the whale art vs the native cursor). */
@@ -490,8 +496,23 @@
   width: 16px;
   height: 16px;
   margin: 0;
-  accent-color: var(--dsw-alias-brand, #4d6bfe);
+  accent-color: var(--dsw-alias-brand-primary);
   cursor: pointer;
+}
+
+/* Keyboard focus for the panel's own clickable surfaces.
+   These have no focus rule of their own and used to pick one up by accident from
+   the global `:focus-visible` that Button.module.css leaked. Scoping that rule
+   away would have dropped them to Chromium's UA ring (a plain `outline: auto`
+   black ring), which reads as a regression on the navy panel — so the ring the
+   panel already had is declared here, on purpose and in scope.
+   Placed last so it wins ties with `.tile:hover` / `.tile.selected`. */
+.groupHeader:focus-visible,
+.tile:focus-visible,
+.weTile:focus-visible,
+.advancedToggle:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--dsw-alias-brand-primary);
 }
 
 /* Host feature-health notice shown when a sub-feature failed to mount. */

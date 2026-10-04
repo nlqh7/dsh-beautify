@@ -31,6 +31,15 @@
   color: var(--dsw-alias-label-primary);
 }
 
+/* Keyboards need their own ring: this cell used to get one only by accident,
+   from the global `:focus-visible` that Button.module.css leaked (see its
+   comment). That rule is gone, and an OUTSET ring here would be clipped by the
+   frame's `overflow: hidden`, so the ring is inset against the business tint. */
+.seg:focus-visible {
+  outline: none;
+  box-shadow: inset 0 0 0 2px var(--dsw-alias-brand-primary);
+}
+
 .active {
   background: var(--dsw-alias-state-business-tertiary);
   color: var(--dsw-alias-state-business-primary);

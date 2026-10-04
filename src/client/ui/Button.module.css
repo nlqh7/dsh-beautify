@@ -50,7 +50,19 @@
   box-shadow: 0 0 0 1px var(--dsw-alias-brand-primary);
 }
 
-:focus-visible {
+/* MUST stay scoped to the module class.
+   A bare `:focus-visible` is NOT scoped by CSS modules — only class names are
+   hashed — so the previous version shipped as a GLOBAL rule and replaced the
+   focus ring of EVERY focusable element in the app, host chrome included.
+   Measured on a real instance (`.worktrees/probe-focus-ring-scope.mjs`):
+   the rule's owner sheet was `data-plugin-css="@nlqh/dsh-beautify/Button.module.css"`
+   (9 rules, classes exactly button/ghost/primary/selected); with it live, a
+   plain injected <button> read `outline: none` + `box-shadow: 0 0 0 2px #526aa8`
+   and 32 of 43 keyboard-focused elements carried that brand ring; deleting the
+   single rule restored `outline: 1px auto` and dropped the ringed count to 4
+   (the 4 remaining are maid-skin's own scoped `inset` rings).
+   Sibling modules carry their own scoped focus rules (Knob, Segmented, Modal). */
+.button:focus-visible {
   outline: none;
   box-shadow: 0 0 0 2px var(--dsw-alias-brand-primary);
 }

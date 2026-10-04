@@ -96,6 +96,13 @@
   transform: rotate(90deg);
 }
 
+/* Same story as Segmented: this used to rely on the global `:focus-visible`
+   leaked by Button.module.css. Now scoped here so keyboard focus stays visible. */
+.close:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--dsw-alias-brand-primary);
+}
+
 .body {
   padding: 16px 18px;
   overflow-y: auto;

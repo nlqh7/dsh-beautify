@@ -13,17 +13,36 @@
  * sidebar content root never fired, and the composer demote rule never
  * applied, so the chat composer stayed painted above the settings panel.
  *
- * A descendant combinator reaches the button through either shell; the
- * trigger's own `aria-haspopup="dialog"` keeps the match unique among the
- * slot's descendants (the panel's nav cells and close button carry no
- * `aria-haspopup`), so the framed-trigger rules below cannot leak into the
- * open dialog.
+ * A descendant combinator reaches the button through either shell. The
+ * original note here claimed `aria-haspopup="dialog"` was enough to keep the
+ * match unique among the slot's descendants; **that is no longer true.**
+ * SettingsPanel is mounted *inside* this same sidebar subtree, and the
+ * beautify appearance panel contributes two more `aria-haspopup="dialog"`
+ * buttons (its 壁纸主题 / 壁纸引擎 rows open modal pickers). Both were being
+ * styled as framed triggers, which paints them with the border-image art —
+ * `border-image-slice: 0 220 0 220 fill` fills the middle too, so the row
+ * reads as a solid navy band with cream serif text while its own
+ * `background-color` stays transparent (that is why the leak is invisible to
+ * a "is the background set?" check: measured `rgba(0,0,0,0)` + a webp
+ * border-image). The row also lost its own hover fill and took a 50px
+ * min-height plus 34px border columns.
+ *
+ * `settings.section` is the host-owned slot every contributed panel renders
+ * into (`ui-settings/contract/slots.ts`, kind `list`), and the trigger is not
+ * inside it — so excluding that subtree pins the match back to the real
+ * trigger and keeps any future plugin section out of the frame.
+ *
+ * Do NOT instead write `:has([data-slot='settings.trigger'])` here: this
+ * constant is consumed inside another `:has()` (the settings-open promotion of
+ * the sidebar content root below), and Chrome rejects nested `:has()`
+ * outright — `:has(a:has(b))` throws "is not a valid selector", which would
+ * silently drop that whole promotion rule.
  *
  * Exported so `maid-atelier-skin.ts` projects state from exactly the selector
  * this stylesheet styles — the two had already drifted apart once.
  */
 export const SETTINGS_TRIGGER_SELECTOR
-  = "[data-slot='sidebar.settings'] :is(button, [role='button'])[aria-haspopup='dialog']"
+  = "[data-slot='sidebar.settings'] :is(button, [role='button'])[aria-haspopup='dialog']:not([data-slot='settings.section'] *)"
 
 export const MAID_ATELIER_CSS = `/* Deep-sea maid atelier: a self-contained presentation layer over the stock
    web GUI. The generated palace and character layers are applied separately
