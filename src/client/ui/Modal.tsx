@@ -39,7 +39,15 @@ export function Modal({ open, title, onClose, children, className }: ModalProps)
   if (!open) return null
 
   return createPortal((
-    <div className={css.root} role="presentation">
+    /* `data-dshw-surface` is a stable contract with the vendored maid-atelier
+       stylesheet: that skin writes its dialog palette/border/shadow on any
+       `[role='dialog']` (it targets the HOST settings dialog, which is portaled
+       into the sidebar DOM). This modal portals to `document.body` instead, so
+       those broad rules were repainting it by accident — measured: 56 elements
+       changed (border-color turned gold, the two authored box-shadows were
+       replaced by the skin's, tiles went cream). The skin excludes this
+       subtree via `PLUGIN_OWNED_EXCLUDE`; keep the attribute name in sync. */
+    <div className={css.root} role="presentation" data-dshw-surface="">
       <div className={css.mask} aria-hidden="true" onClick={onClose} />
       <div className={[css.dialog, className ?? ''].filter(Boolean).join(' ')} role="dialog" aria-modal="true" aria-label={title}>
         <div className={css.header}>

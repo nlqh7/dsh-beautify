@@ -316,7 +316,7 @@ function preset(id: string, label: string, colorScheme: 'light' | 'dark', palett
 /** Shipped local presets, in display order. */
 export const DREAM_SKIN_PRESETS: readonly DreamSkinPreset[] = Object.freeze([
   // ── 内置 ──
-  preset('dream-codex', 'Codex Codex 默认暗色', 'dark', {
+  preset('dream-codex', 'Codex 默认暗色', 'dark', {
     background: '#111318',
     panel: '#191c22',
     panelAlt: '#20242b',

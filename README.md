@@ -2,7 +2,7 @@
 
 > DSH 社区插件 · 一站式美化包：鲸鱼光标 / 子代理小鲸鱼 / 29 套主题 / 自定义皮肤 / 声音与设置
 
-[![npm version](https://img.shields.io/badge/version-0.5.1-blue)](#) [![dsh](https://img.shields.io/badge/dsh-%E2%89%A50.1.6--alpha.2-blueviolet)](#) [![bundle](https://img.shields.io/badge/bundle-4.6MB-success)](#) [![license](https://img.shields.io/badge/license-CC--BY--NC--SA--4.0-orange)](#license)
+[![npm version](https://img.shields.io/badge/version-0.5.2-blue)](#) [![dsh](https://img.shields.io/badge/dsh-%E2%89%A50.1.6--alpha.2-blueviolet)](#) [![bundle](https://img.shields.io/badge/bundle-4.6MB-success)](#) [![license](https://img.shields.io/badge/license-CC--BY--NC--SA--4.0-orange)](#license)
 
 每个子代理都是一只**独立、完整、可互动**的小鲸鱼，分布在主鲸鱼周围；主鲸鱼本身可拖动、点击回弹、换皮；29 套主题、10 态光标，所有声音可独立控制。
 
@@ -64,6 +64,7 @@
 - **深浅两档是两套底图**：浅色档是瓷白纸面 + 宫殿底图，深色档换成**夜宫图**（同一幅画的夜版），且深色档的可读性遮罩用**夜底色**而不是纸白 —— 否则夜版会被洗成灰蓝中调，浅墨文字（回合尾的用时 / 时间戳、上下文占用百分比）会掉到 1.4:1
 - 深色档下所有元信息墨色都按"夜海军蓝底"重校过：`label-tertiary` 由 `#96a6c9` 抬到 `#9dabce`（最窄列里实测 4.41 → 4.61+）
 - **框艺只属于侧栏那颗"设置"按钮**：设置弹窗里带「选择」的两行（壁纸主题 / 壁纸引擎）曾被主题的触发器样式一起套住 —— 整行被金色边框图（`border-image` 的 `fill`）画成藏蓝描金、字体被换成衬线、行高抬到 50px、行自身 hover 底被压掉；现在这两行回到插件自己的样式，与同列其他行一致
+- **插件自己的弹窗不再被主题的宿主规则误套**：给**宿主**设置弹窗写的 5 条浮层规则（女仆调色板 token、金色描边、主题阴影、遮罩改海军蓝）选择器是泛化的 `[role='dialog'][aria-modal='true']`，而插件自己的 `Modal` 恰好是同一个组合 —— 它 portal 到 `body`、**不在** sidebar DOM 里（实测 `insideSettingsSlot=false`），所以那些规则对它是纯误伤：实测插件弹窗子树有 **56 个元素**的 computed 被改（边框被换成暖金、插件作者写死的两条阴影被替换成主题阴影、瓦片底色被换成主题奶油、遮罩从中性黑变成海军蓝）；现在插件 `Modal` 根节点带稳定标记 `data-dshw-surface`，那 5 条规则用 `:not(标记, 标记 *)` 精确排除，宿主设置弹窗的调色板与装饰原样保留
 
 ![深海女仆工坊 · 浅色档：瓷白纸面聊天态](docs/screenshots/11-maid-chat-light.png)
 
