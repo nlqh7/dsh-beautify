@@ -156,7 +156,7 @@ alpha.2 与更早的 `0.1.0-rc.8` 的**客户端插件契约不同，同一份�
 | `ClientContext` | `dsh-client-runtime/client` | `@deepseek-ai/cordis` |
 | renderer 类型合并 | 来自 ui-slots | `@deepseek-ai/dsh-client-ui-renderer/client` |
 
-v0.3.0 及更早是 rc.8 血统；v0.4.0 起改为 alpha.2 血统。
+**版本号与 tag 谱系**：`package.json` 的 0.3.0 及更早是 rc.8 血统，0.4.0 起为 alpha.2 血统。alpha.2 谱系的 tag 带 `-alpha2` 后缀（如 `v0.5.2-alpha2`）；`git tag -l` 里**不带后缀**的 `v0.4.0`–`v0.7.0` 全部指向 **rc.8 旧谱系**的提交，与这里的 `package.json` 0.4.0+ **不是同一棵谱系** —— 按 tag 拉代码前先确认后缀。
 
 安装后：
 - 屏幕右下角出现主鲸鱼
